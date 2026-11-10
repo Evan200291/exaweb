@@ -210,8 +210,8 @@ async function loadFullPackageTranslation(pkg) {
 
 /* ---------------- Banner (2 slides + safe zones) ---------------- */
 const SLIDES = [
-  { href: '#/p/outline-vpn', alt: 'Outline VPN — private access without borders', d: 'assets/banners/outline-desktop.svg', m: 'assets/banners/outline-mobile.svg' },
-  { href: '#/products?g=ai', alt: 'Premium AI tools and productivity packages', d: 'assets/banners/apps-desktop.svg', m: 'assets/banners/apps-mobile.svg' }
+  { href: '#/p/outline-vpn', alt: 'Outline VPN - private Singapore access', d: 'assets/banners/outline-v2.png', m: 'assets/banners/outline-v2.png', kicker: 'OUTLINE VPN · SINGAPORE', title: 'Private access.<br>Ready in seconds.', meta: 'SGSEP Singapore route · 100 GB from 5,000 Ks', action: 'VIEW DATA PLANS' },
+  { href: '#/products?g=ai', alt: 'Premium AI tools and productivity packages', d: 'assets/banners/apps-v2.png', m: 'assets/banners/apps-v2.png', kicker: 'EXABYTE DIGITAL STORE', title: 'The tools you use.<br>One local wallet.', meta: 'AI · Design · Streaming · Productivity', action: 'EXPLORE PACKAGES' }
 ];
 const T = (x, y, s, w, f, txt, extra = '') => `<text x="${x}" y="${y}" font-family="Inter,Segoe UI,sans-serif" font-size="${s}" font-weight="${w}" fill="${f}" ${extra}>${txt}</text>`;
 const bgDefs = (id, a, b, gx, gy, glow) => `<defs><linearGradient id="${id}b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient><radialGradient id="${id}g" cx="${gx}" cy="${gy}" r=".55"><stop offset="0" stop-color="${glow}" stop-opacity=".55"/><stop offset="1" stop-color="${glow}" stop-opacity="0"/></radialGradient><pattern id="${id}p" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60 0H0V60" fill="none" stroke="#fff" stroke-opacity=".045"/></pattern></defs>`;
@@ -245,7 +245,7 @@ function art(i, mobile) {
 }
 const bannerHTML = () => `<section class="banner" id="banner" aria-roledescription="carousel" aria-label="Featured">
   <div class="track">${SLIDES.map((s, i) => `<a class="slide ${i ? '' : 'on'}" href="${s.href}" aria-label="${esc(s.alt)}">
-    <picture><source media="(min-width:768px)" srcset="${s.d}"><img src="${s.m}" alt="${esc(s.alt)}"></picture>${i === 0 ? '<span class="banner-outline-logo"><img src="assets/logos/outline_vpn.png" alt=""></span>' : '<span class="banner-app-logos"><i><img src="assets/logos/chatgpt.svg" alt=""></i><i><img src="assets/logos/claude.svg" alt=""></i><i><img src="assets/logos/canva.svg" alt=""></i><i><img src="assets/logos/google_one.svg" alt=""></i><i><img src="assets/logos/youtube.svg" alt=""></i><i><img src="assets/logos/spotify.svg" alt=""></i></span>'}</a>`).join('')}</div>
+    <picture><source media="(min-width:768px)" srcset="${s.d}"><img src="${s.m}" alt=""></picture><span class="banner-copy"><small>${s.kicker}</small><strong>${s.title}</strong><em>${s.meta}</em><b>${s.action}</b></span>${i === 0 ? '<span class="banner-outline-logo"><img src="assets/logos/outline_vpn.png" alt="Outline VPN"></span>' : '<span class="banner-app-logos"><i><img src="assets/logos/chatgpt.svg" alt="ChatGPT"></i><i><img src="assets/logos/claude.svg" alt="Claude"></i><i><img src="assets/logos/canva.svg" alt="Canva"></i><i><img src="assets/logos/google_one.svg" alt="Google One"></i><i><img src="assets/logos/youtube.svg" alt="YouTube"></i><i><img src="assets/logos/spotify.svg" alt="Spotify"></i></span>'}</a>`).join('')}</div>
   <button class="barrow l" data-d="-1" aria-label="Previous slide">${ICON.left}</button><button class="barrow r" data-d="1" aria-label="Next slide">${ICON.arrow}</button>
   <div class="dots" role="tablist">${SLIDES.map((_, i) => `<button data-i="${i}" class="${i ? '' : 'on'}" aria-label="Slide ${i + 1}"></button>`).join('')}</div></section>`;
 let bIdx = 0, bTimer;
