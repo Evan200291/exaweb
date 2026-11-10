@@ -9,8 +9,7 @@ module.exports = {
     autorestart: true,
     max_memory_restart: '500M',
     env: {
-      NODE_ENV: 'production',
-      PORT: process.env.PORT || 60010
+      NODE_ENV: 'production'
     }
   }]
 };
