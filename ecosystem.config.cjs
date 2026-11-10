@@ -2,7 +2,8 @@ module.exports = {
   apps: [{
     name: 'exabyte-web',
     cwd: __dirname,
-    script: 'server.js',
+    script: 'node',
+    args: '--env-file-if-exists=.env server.js',
     instances: 1,
     exec_mode: 'fork',
     autorestart: true,
