@@ -224,8 +224,8 @@ async function loadFullPackageTranslation(pkg) {
 
 /* ---------------- Banner (2 slides + safe zones) ---------------- */
 const SLIDES = [
-  { href: '#/p/outline-vpn', alt: 'Outline VPN - private Singapore access', d: 'assets/banners/outline-complete.png', m: 'assets/banners/outline-complete.png', kicker: 'OUTLINE VPN · SINGAPORE', title: 'Private access.<br>Ready in seconds.', meta: 'SGSEP Singapore route · 100 GB from 5,000 Ks', action: 'VIEW DATA PLANS' },
-  { href: '#/products?g=ai', alt: 'Premium AI tools and productivity packages', d: 'assets/banners/apps-complete.png', m: 'assets/banners/apps-complete.png', kicker: 'EXABYTE DIGITAL STORE', title: 'The tools you use.<br>One local wallet.', meta: 'AI · Design · Streaming · Productivity', action: 'EXPLORE PACKAGES' }
+  { href: '#/p/outline-vpn', alt: 'Outline VPN - private Bangkok access', d: 'assets/banners/outline-complete.png', m: 'assets/banners/outline-complete.png', kicker: 'OUTLINE VPN · BANGKOK', title: 'Private access.<br>Ready in seconds.', meta: 'Bangkok route · 100 GB from 5,000 Ks', action: 'VIEW DATA PLANS', mTitle: 'Private.<br>Ready.', mMeta: 'Bangkok VPN · Instant access', mAction: 'VIEW PLANS' },
+  { href: '#/products?g=ai', alt: 'Premium AI tools and productivity packages', d: 'assets/banners/apps-complete.png', m: 'assets/banners/apps-complete.png', kicker: 'EXABYTE DIGITAL STORE', title: 'The tools you use.<br>One local wallet.', meta: 'AI · Design · Streaming · Productivity', action: 'EXPLORE PACKAGES', mTitle: 'Premium<br>tools.', mMeta: 'AI · Design · Streaming', mAction: 'BROWSE' }
 ];
 const T = (x, y, s, w, f, txt, extra = '') => `<text x="${x}" y="${y}" font-family="Inter,Segoe UI,sans-serif" font-size="${s}" font-weight="${w}" fill="${f}" ${extra}>${txt}</text>`;
 const bgDefs = (id, a, b, gx, gy, glow) => `<defs><linearGradient id="${id}b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient><radialGradient id="${id}g" cx="${gx}" cy="${gy}" r=".55"><stop offset="0" stop-color="${glow}" stop-opacity=".55"/><stop offset="1" stop-color="${glow}" stop-opacity="0"/></radialGradient><pattern id="${id}p" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60 0H0V60" fill="none" stroke="#fff" stroke-opacity=".045"/></pattern></defs>`;
@@ -259,7 +259,7 @@ function art(i, mobile) {
 }
 const bannerHTML = () => `<section class="banner" id="banner" aria-roledescription="carousel" aria-label="Featured">
   <div class="track">${SLIDES.map((s, i) => `<a class="slide ${i ? '' : 'on'}" href="${s.href}" aria-label="${esc(s.alt)}">
-    <picture><source media="(min-width:768px)" srcset="${s.d}"><img src="${s.m}" alt=""></picture><span class="banner-copy"><small>${s.kicker}</small><strong>${s.title}</strong><em>${s.meta}</em><b>${s.action}</b></span></a>`).join('')}</div>
+    <picture><source media="(min-width:768px)" srcset="${s.d}"><img src="${s.m}" alt=""></picture><span class="banner-copy"><small>${s.kicker}</small><strong class="copy-desktop">${s.title}</strong><strong class="copy-mobile">${s.mTitle}</strong><em class="copy-desktop">${s.meta}</em><em class="copy-mobile">${s.mMeta}</em><b class="copy-desktop">${s.action}</b><b class="copy-mobile">${s.mAction}</b></span></a>`).join('')}</div>
   <button class="barrow l" data-d="-1" aria-label="Previous slide">${ICON.left}</button><button class="barrow r" data-d="1" aria-label="Next slide">${ICON.arrow}</button>
   <div class="dots" role="tablist">${SLIDES.map((_, i) => `<button data-i="${i}" class="${i ? '' : 'on'}" aria-label="Slide ${i + 1}"></button>`).join('')}</div></section>`;
 let bIdx = 0, bTimer;
