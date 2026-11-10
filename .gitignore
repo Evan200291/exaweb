@@ -2,6 +2,7 @@
 .env.*
 !.env.example
 data/store.json
+data/translation-cache.json
 node_modules/
 *.log
 *.zip

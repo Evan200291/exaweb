@@ -81,6 +81,7 @@ const ICON = {
 };
 
 function iconImg(cat, colorHex) {
+  if (cat.logoPath) return `<img class="brand-art" src="${esc(cat.logoPath)}" alt="" loading="lazy">`;
   const artwork = cat.image || cat.coverImage;
   if (artwork) return `<img class="package-art" src="${esc(artwork)}" alt="" loading="lazy" onerror="this.remove()">`;
   if (cat.svg === 'outline') return OUTLINE_SVG;
@@ -174,6 +175,37 @@ async function loadBackendData(forceCatalog = false) {
     STATE.tops = stRes.topups || [];
   }
   STATE.loaded = true;
+}
+
+let translationRequestId = 0;
+async function loadFullPackageTranslation(pkg) {
+  if (LANG !== 'mm' || !pkg || !pkg.productId) return;
+  const requestId = ++translationRequestId;
+  const descEl = $('#pkgdetail .pd-desc');
+  if (descEl) {
+    descEl.classList.add('translation-loading');
+    descEl.textContent = 'ရောင်းသူ API မှ ပက်ကေ့ချ်ဖော်ပြချက်အပြည့်အစုံကို မြန်မာဘာသာသို့ ပြန်ဆိုနေပါသည်…';
+  }
+  try {
+    const response = await fetch(`/api/translate/mm?productId=${encodeURIComponent(pkg.productId)}`);
+    const data = await response.json();
+    if (!response.ok || !data.success) throw new Error(data.message || 'Translation failed');
+    if (requestId !== translationRequestId || LANG !== 'mm' || !curCat || curCat.packages[selIdx]?.productId !== pkg.productId) return;
+    pkg.fullDescriptionMm = data.descriptionMm;
+    const currentDesc = $('#pkgdetail .pd-desc');
+    if (currentDesc) {
+      currentDesc.classList.remove('translation-loading');
+      currentDesc.innerHTML = linkify(data.descriptionMm || pkg.descriptionMm || 'ဖော်ပြချက်မရှိပါ။');
+    }
+  } catch (error) {
+    if (requestId !== translationRequestId) return;
+    const currentDesc = $('#pkgdetail .pd-desc');
+    if (currentDesc) {
+      currentDesc.classList.remove('translation-loading');
+      currentDesc.textContent = 'မြန်မာဘာသာပြန်ဆိုမှုကို ယခုမရရှိနိုင်သေးပါ။ ခဏအကြာ ပြန်လည်ကြိုးစားပါ။';
+    }
+    console.warn('Full package translation failed:', error);
+  }
 }
 
 /* ---------------- Banner (2 slides + safe zones) ---------------- */
@@ -393,8 +425,9 @@ function updateSelectedPackageDetails() {
       </div>
       ${promos ? `<div class="pd-promo">${esc(promos)}</div>` : ''}
       <div class="pd-desc-lbl">${t('packageDetails')}</div>
-      <div class="pd-desc ${LANG === 'mm' ? 'mm-copy' : ''}">${linkify(pkgDescription(k) || `${pkgName(k)}\n\n${pkgDeliveryHint(k)}`)}</div>
-      ${LANG === 'mm' ? `<div class="lang-note">API မှရရှိသော ပက်ကေ့ချ်အချက်အလက်နှင့် အာမခံစည်းမျဉ်းအားလုံးကို မြန်မာလို ပြသထားပါသည်။</div>` : ''}`;
+      <div class="pd-desc ${LANG === 'mm' ? 'mm-copy' : ''}">${LANG === 'mm' ? esc(k.fullDescriptionMm || 'ရောင်းသူ API မှ ပက်ကေ့ချ်ဖော်ပြချက်အပြည့်အစုံကို မြန်မာဘာသာသို့ ပြန်ဆိုနေပါသည်…') : linkify(pkgDescription(k) || `${pkgName(k)}\n\n${pkgDeliveryHint(k)}`)}</div>
+      ${LANG === 'mm' ? `<div class="lang-note">ရောင်းသူ API ၏ မူရင်းဖော်ပြချက်ကို အပြည့်အစုံ မြန်မာဘာသာပြန်ဆိုပြီး URL၊ နံပါတ်နှင့် အာမခံကာလများကို မပြောင်းလဲဘဲ ထိန်းသိမ်းထားပါသည်။</div>` : ''}`;
+    if (LANG === 'mm' && !k.fullDescriptionMm) loadFullPackageTranslation(k);
   }
 
   // Step 2: Dynamic Order Input (matches exact Telegram bot prompt per package type)

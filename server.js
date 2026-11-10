@@ -33,6 +33,7 @@ const SGSEP_VERIFY_TLS = String(process.env.SGSEP_VERIFY_TLS || 'false').toLower
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const CACHE_FILE = path.join(DATA_DIR, 'catalog-cache.json');
+const TRANSLATION_CACHE_FILE = path.join(DATA_DIR, 'translation-cache.json');
 const STORE_FILE = path.join(DATA_DIR, 'store.json');
 
 function loadStore() {
@@ -271,6 +272,21 @@ function translateSellerLineMm(input) {
 
   let text = original;
   const rules = [
+    [/MUSE AI\s*([\d,]+)\s*BILLION TOKENS\s*[–-]\s*1 MONTH\s*\|\s*no warranty/gi, 'MUSE AI Token $1 ဘီလီယံ – 1 လ | အာမခံမပါ'],
+    [/NOTES? BEFORE USE|NOTE BEFORE USING/gi, 'အသုံးမပြုမီ သတိပြုရန်'],
+    [/LOGIN INSTRUCTIONS/gi, 'အကောင့်ဝင်ရောက်အသုံးပြုပုံ'],
+    [/Log in (?:with|using) a clean IP\.?/gi, 'သန့်ရှင်းသော IP ဖြင့် အကောင့်ဝင်ပါ။'],
+    [/Do not change account information after purchase and do not link Facebook\.?/gi, 'ဝယ်ယူပြီးနောက် အကောင့်အချက်အလက်များကို မပြောင်းပါနှင့်၊ Facebook နှင့်လည်း မချိတ်ပါနှင့်။'],
+    [/If you have any questions, please message the shop before taking any action with the account\.?/gi, 'မေးမြန်းလိုသည်များရှိပါက အကောင့်နှင့်ပတ်သက်သော လုပ်ဆောင်ချက်တစ်ခုခု မပြုလုပ်မီ ဆိုင်သို့ အရင်စာပို့မေးမြန်းပါ။'],
+    [/Warranty (?:only covers|covers) login for (?:only )?1 hour\. Once you have successfully logged into the account, the warranty ends\.?/gi, 'အကောင့်ဝင်ရောက်မှုအတွက် 1 နာရီသာ အာမခံပါသည်။ အကောင့်ထဲသို့ အောင်မြင်စွာဝင်ရောက်ပြီးသည်နှင့် အာမခံကာလ ပြီးဆုံးပါသည်။'],
+    [/Step 1:\s*Enter the account email into Muse AI\.?/gi, 'အဆင့် 1 - အကောင့် Email ကို Muse AI တွင် ထည့်ပါ။'],
+    [/Step 2:\s*Access one of the two websites below to get the verification code:?/gi, 'အဆင့် 2 - အတည်ပြုကုဒ်ရယူရန် အောက်ပါ website နှစ်ခုအနက် တစ်ခုသို့ ဝင်ပါ။'],
+    [/Step 3:\s*Enter the email on the website to check the verification code\.?/gi, 'အဆင့် 3 - အတည်ပြုကုဒ်ကို စစ်ဆေးရန် website တွင် Email ကို ထည့်ပါ။'],
+    [/Step 4:\s*Get the verification code and enter it into Muse AI to complete the login\.?/gi, 'အဆင့် 4 - အတည်ပြုကုဒ်ကို ရယူပြီး Muse AI တွင် ထည့်ကာ အကောင့်ဝင်ခြင်းကို အပြီးသတ်ပါ။'],
+    [/Example email:\s*/gi, 'ဥပမာ Email - '],
+    [/(?:Email Generator|Generator Email):\s*/gi, 'Email အတည်ပြုကုဒ်ရယူရန် - '],
+    [/LuuVan:\s*/gi, 'LuuVan မှ ရယူရန် - '],
+    [/PLEASE READ THE WARRANTY TERMS CAREFULLY BEFORE PURCHASING!?/gi, 'မဝယ်ယူမီ အာမခံစည်းမျဉ်းများကို သေချာဖတ်ပါ။'],
     [/PRODUCT INFORMATION|PACKAGE INFORMATION|INFORMATION/gi, 'ပက်ကေ့ချ်အချက်အလက်'],
     [/IMPORTANT NOTES?|NOTES?/gi, 'အရေးကြီးမှတ်ချက်'],
     [/WARRANTY\s*&\s*TERMS|WARRANTY POLICY/gi, 'အာမခံစည်းမျဉ်း'],
@@ -605,6 +621,87 @@ async function getRawCatalog(force = false) {
   finally { catalogFetchPromise = null; }
 }
 
+let mmTranslationCache = {};
+try {
+  if (fs.existsSync(TRANSLATION_CACHE_FILE)) {
+    mmTranslationCache = JSON.parse(fs.readFileSync(TRANSLATION_CACHE_FILE, 'utf8').replace(/^\uFEFF/, ''));
+  }
+} catch {}
+
+const activeTranslations = new Map();
+
+function translateChunkToMyanmar(chunk) {
+  return new Promise((resolve, reject) => {
+    const url = new URL('https://translate.googleapis.com/translate_a/single');
+    url.search = new URLSearchParams({ client: 'gtx', sl: 'en', tl: 'my', dt: 't', q: chunk }).toString();
+    const request = https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 ExabyteStore/1.0' }, timeout: 12000 }, response => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', part => body += part);
+      response.on('end', () => {
+        if (response.statusCode !== 200) return reject(new Error(`Translation service returned ${response.statusCode}`));
+        try {
+          const parsed = JSON.parse(body);
+          const translated = Array.isArray(parsed[0]) ? parsed[0].map(part => part && part[0] ? part[0] : '').join('') : '';
+          if (!translated) throw new Error('Translation service returned an empty result');
+          resolve(translated);
+        } catch (error) { reject(error); }
+      });
+    });
+    request.on('timeout', () => request.destroy(new Error('Translation service timed out')));
+    request.on('error', reject);
+  });
+}
+
+function splitTranslationChunks(text, limit = 1500) {
+  const chunks = [];
+  let current = '';
+  for (const line of String(text || '').split(/\r?\n/)) {
+    const next = current ? `${current}\n${line}` : line;
+    if (next.length > limit && current) {
+      chunks.push(current);
+      current = line;
+    } else current = next;
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+async function getFullMyanmarTranslation(productId) {
+  const rawProduct = [...OUTLINE_PACKAGES, ...((memoryCatalog && memoryCatalog.products) || [])]
+    .find(product => String(product.productId) === String(productId));
+  if (!rawProduct) throw new Error('Product was not found in the seller catalog');
+  const source = String(rawProduct.description || '').trim();
+  if (!source) return { productId, descriptionMm: '', cached: true };
+  const sourceHash = crypto.createHash('sha256').update(`v2\0${source}`).digest('hex');
+  const cached = mmTranslationCache[productId];
+  if (cached && cached.sourceHash === sourceHash && cached.descriptionMm) {
+    return { productId, descriptionMm: cached.descriptionMm, cached: true };
+  }
+  if (activeTranslations.has(productId)) return activeTranslations.get(productId);
+
+  const translationTask = (async () => {
+    const protectedValues = [];
+    const protectedSource = source.replace(/https?:\/\/[^\s]+|\b(?:Email|Password|Pass|2FA|IP|QR|Facebook|Gmail|Telegram|Bot|API|JSON|OTP)\b/gi, value => {
+      const token = `ZXQURL${protectedValues.length}ZXQ`;
+      protectedValues.push(value);
+      return token;
+    });
+    const translatedParts = [];
+    for (const chunk of splitTranslationChunks(protectedSource)) translatedParts.push(await translateChunkToMyanmar(chunk));
+    let descriptionMm = translatedParts.join('\n');
+    protectedValues.forEach((value, index) => {
+      descriptionMm = descriptionMm.replace(new RegExp(`ZXQURL${index}ZXQ`, 'gi'), value);
+    });
+    mmTranslationCache[productId] = { sourceHash, descriptionMm, translatedAt: new Date().toISOString() };
+    fs.writeFileSync(TRANSLATION_CACHE_FILE, JSON.stringify(mmTranslationCache, null, 2), 'utf8');
+    return { productId, descriptionMm, cached: false };
+  })();
+  activeTranslations.set(productId, translationTask);
+  try { return await translationTask; }
+  finally { activeTranslations.delete(productId); }
+}
+
 function buildStructuredCatalog(rawProducts, metaInfo) {
   const allRaw = [...OUTLINE_PACKAGES, ...rawProducts.filter(p => p.emoji !== 'tele' && (p.price?.amount || 0) > 0)];
   const catMap = new Map();
@@ -619,6 +716,7 @@ function buildStructuredCatalog(rawProducts, metaInfo) {
       slug: null
     };
     if (!catMap.has(key)) {
+      const logoExtension = ['svg', 'png', 'ico', 'webp', 'jpg'].find(extension => fs.existsSync(path.join(__dirname, 'assets', 'logos', `${key}.${extension}`)));
       catMap.set(key, {
         id: key.replace(/_/g, '-'),
         key,
@@ -628,6 +726,7 @@ function buildStructuredCatalog(rawProducts, metaInfo) {
         slug: meta.slug || null,
         svg: meta.svg || null,
         darkText: !!meta.darkText,
+        logoPath: logoExtension ? `assets/logos/${key}.${logoExtension}` : null,
         hot: !!meta.hot,
         isNew: !!meta.isNew,
         packages: []
@@ -950,6 +1049,17 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, data);
     } catch (e) {
       return sendJson(res, 503, { success: false, message: e.message });
+    }
+  }
+
+  if (pathname === '/api/translate/mm' && req.method === 'GET') {
+    try {
+      const productId = String(u.searchParams.get('productId') || '').trim();
+      if (!productId) return sendJson(res, 400, { success: false, message: 'productId is required' });
+      const translated = await getFullMyanmarTranslation(productId);
+      return sendJson(res, 200, { success: true, ...translated });
+    } catch (error) {
+      return sendJson(res, 503, { success: false, message: error.message });
     }
   }
 
