@@ -20,6 +20,26 @@ The checked-in catalog cache keeps browsing available when the supplier API is n
 
 Copy `.env.example` to `.env`, supply the deployment secrets, and register the Telegram webhook at `/api/tg/webhook`. Never commit `.env`.
 
+## Enable Google sign-in
+
+1. Deploy the store on an HTTPS domain.
+2. In Google Cloud Console, configure the OAuth consent screen.
+3. Create an OAuth client with application type **Web application**.
+4. Add this exact authorized redirect URI: `https://YOUR_DOMAIN/auth/google/callback`.
+5. Configure `APP_BASE_URL`, `SESSION_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI` in the server environment.
+6. Restart the server and check `/api/auth/config`; `google` should be `true`.
+
+For local testing, Google permits a localhost redirect such as `http://localhost:60010/auth/google/callback`. The redirect URI must exactly match the value registered with Google.
+
+## Enable Telegram sign-in
+
+1. Use a dedicated Telegram bot with the store name and logo.
+2. In `@BotFather`, select the bot's **Login Widget** settings and add the production origin and callback URL. For the classic widget, `/setdomain` must match the website domain.
+3. Configure `APP_BASE_URL`, `SESSION_SECRET`, `TG_BOT_TOKEN`, and `TG_BOT_USERNAME` in the server environment.
+4. Restart the server and check `/api/auth/config`; `telegram` should be `true`.
+
+Telegram payment review additionally needs `TG_ADMIN_IDS` and `TG_WEBHOOK_SECRET`. Register `https://YOUR_DOMAIN/api/tg/webhook` as the bot webhook using the same secret token. Login credentials and webhook secrets must remain server-side.
+
 ## Checks
 
 Run `npm run check` to validate the frontend and backend JavaScript syntax.

@@ -26,8 +26,8 @@
     <a href="#/products?g=vpn" data-r="vpn">VPN</a>
     <a href="#/topup" data-r="topup" data-i18n="topup">Top Up</a>
     <div class="dd">
-      <button class="ddb" data-r="orders">History <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
-      <div class="ddm"><a href="#/orders?t=buy">Product Purchase</a><a href="#/orders?t=top">Top Up Requests</a></div>
+      <button class="ddb" data-r="orders"><span data-i18n="history">History</span> <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="ddm"><a href="#/orders?t=buy" data-i18n="purchaseHistory">Product Purchase</a><a href="#/orders?t=top" data-i18n="topupHistory">Top Up Requests</a></div>
     </div>
     <a href="#/api" data-r="api">API</a>
   </nav>
@@ -46,10 +46,10 @@
 <div class="mmenu" id="mmenu" hidden>
   <div class="mback" data-close></div>
   <nav class="mpanel" aria-label="Mobile">
-    <div class="mhead"><b>Menu</b><button data-close aria-label="Close menu">&times;</button></div>
+    <div class="mhead"><b data-i18n="menu">Menu</b><button data-close aria-label="Close menu">&times;</button></div>
     <button class="mauth" id="mAuthBtn" type="button">Sign in with Telegram or Google</button>
-    <a href="#/">Home</a><a href="#/products">All Products</a><a href="#/products?g=vpn">VPN</a><a href="#/products?g=ai">AI Tools</a>
-    <a href="#/topup">Top Up Wallet</a><a href="#/orders?t=buy">Purchase History</a><a href="#/orders?t=top">Top Up History</a><a href="#/api">Reseller API</a>
+    <a href="#/" data-i18n="home">Home</a><a href="#/products" data-i18n="allProducts">All Products</a><a href="#/products?g=vpn">VPN</a><a href="#/products?g=ai" data-i18n="aiTools">AI Tools</a>
+    <a href="#/topup" data-i18n="topupWallet">Top Up Wallet</a><a href="#/orders?t=buy" data-i18n="purchaseHistory">Purchase History</a><a href="#/orders?t=top" data-i18n="topupHistory">Top Up History</a><a href="#/api" data-i18n="resellerApi">Reseller API</a>
   </nav>
 </div>
 
@@ -61,20 +61,20 @@
       <a class="brand" href="#/"><svg class="mark" viewBox="0 0 36 36" aria-hidden="true"><g fill="currentColor"><rect x="2" y="3" width="7" height="30"/><rect x="12" y="3" width="22" height="7"/><rect x="12" y="14.5" width="17" height="7"/><rect x="12" y="26" width="22" height="7"/></g></svg><span class="wordmark"><b>EXABYTE</b><small>DIGITAL STORE</small></span></a>
       <p>Premium apps, AI tools and VPN access. Top up once, buy anytime. Delivered in minutes.</p>
     </div>
-    <div><h5>Store</h5><a href="#/products">All products</a><a href="#/p/outline-vpn">Outline VPN</a><a href="#/products?g=ai">AI tools</a><a href="#/products?g=stream">Streaming</a></div>
-    <div><h5>Account</h5><a href="#/topup">Top up</a><a href="#/orders">History</a><a href="#/api">Reseller API</a><a href="#/">Telegram support</a></div>
-    <div><h5>We accept</h5><div class="pays"><span>KBZPay</span><span>WavePay</span><span>AYA Pay</span><span>CB Pay</span><span>Bank</span></div></div>
+    <div><h5 data-i18n="store">Store</h5><a href="#/products" data-i18n="allProducts">All products</a><a href="#/p/outline-vpn">Outline VPN</a><a href="#/products?g=ai" data-i18n="aiTools">AI tools</a><a href="#/products?g=stream" data-i18n="streaming">Streaming</a></div>
+    <div><h5 data-i18n="account">Account</h5><a href="#/topup" data-i18n="topup">Top up</a><a href="#/orders" data-i18n="history">History</a><a href="#/api" data-i18n="resellerApi">Reseller API</a><a href="#/" data-i18n="telegramSupport">Telegram support</a></div>
+    <div><h5 data-i18n="weAccept">We accept</h5><div class="pays"><span>KBZPay</span><span>WavePay</span><span>AYA Pay</span><span>CB Pay</span><span data-i18n="bank">Bank</span></div></div>
   </div>
   <div class="copyr">© 2026 Exabyte Digital Store</div>
 </footer>
 
 <!-- MOBILE BOTTOM NAV (Banana placement) -->
 <nav class="bnav" aria-label="Bottom">
-  <a href="#/" data-r="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</a>
-  <a href="#/products" data-r="products"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>Shop</a>
-  <a href="#/topup" data-r="topup" class="bmid"><span><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Top Up</a>
-  <a href="#/orders" data-r="orders"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>History</a>
-  <a href="#/api" data-r="api"><svg viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg>API</a>
+  <a href="#/" data-r="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span data-i18n="home">Home</span></a>
+  <a href="#/products" data-r="products"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span data-i18n="shop">Shop</span></a>
+  <a href="#/topup" data-r="topup" class="bmid"><span><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span data-i18n="topup">Top Up</span></a>
+  <a href="#/orders" data-r="orders"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><span data-i18n="history">History</span></a>
+  <a href="#/api" data-r="api"><svg viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg><span>API</span></a>
 </nav>
 <script src="app.js"></script>
 </body>

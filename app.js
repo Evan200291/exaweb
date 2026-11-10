@@ -33,19 +33,30 @@ const COPY = {
   en: {
     home: 'Home', products: 'Products', topup: 'Top Up', signIn: 'Sign in', popular: 'Popular Categories', seeMore: 'See More',
     selectPackage: 'Select Package', orderInput: 'Order Input', packageDetails: 'Package Description & Warranty Policy',
-    price: 'Price', stock: 'Stock', sold: 'Sold', type: 'Type', instant: 'Instant', packages: 'packages', free: 'Free'
+    price: 'Price', stock: 'Stock', sold: 'Sold', type: 'Type', instant: 'Instant', packages: 'packages', free: 'Free',
+    history: 'History', purchaseHistory: 'Product Purchases', topupHistory: 'Top Up Requests', menu: 'Menu', allProducts: 'All Products', aiTools: 'AI Tools',
+    topupWallet: 'Top Up Wallet', resellerApi: 'Reseller API', store: 'Store', account: 'Account', streaming: 'Streaming', telegramSupport: 'Telegram support',
+    weAccept: 'We accept', bank: 'Bank', shop: 'Shop', categories: 'Categories', support: 'Support', quantity: 'Quantity', fulfillment: 'Fulfillment',
+    walletBalance: 'Wallet Balance', totalPayment: 'Total Payment', required: 'Required', optional: 'Optional', pending: 'Pending review', approved: 'Approved', rejected: 'Rejected'
   },
   mm: {
     home: 'ပင်မ', products: 'ကုန်ပစ္စည်းများ', topup: 'ငွေဖြည့်ရန်', signIn: 'အကောင့်ဝင်ရန်', popular: 'လူကြိုက်များသော အမျိုးအစားများ', seeMore: 'နောက်ထပ်ကြည့်ရန်',
     selectPackage: 'ပက်ကေ့ချ်ရွေးပါ', orderInput: 'မှာယူရန်အချက်အလက်', packageDetails: 'ပက်ကေ့ချ်အသေးစိတ်နှင့် အာမခံစည်းမျဉ်း',
-    price: 'စျေးနှုန်း', stock: 'လက်ကျန်', sold: 'ရောင်းပြီး', type: 'အမျိုးအစား', instant: 'ချက်ချင်းရမည်', packages: 'ပက်ကေ့ချ်', free: 'အခမဲ့'
+    price: 'စျေးနှုန်း', stock: 'လက်ကျန်', sold: 'ရောင်းပြီး', type: 'အမျိုးအစား', instant: 'ချက်ချင်းရမည်', packages: 'ပက်ကေ့ချ်', free: 'အခမဲ့',
+    history: 'မှတ်တမ်း', purchaseHistory: 'ဝယ်ယူမှုမှတ်တမ်း', topupHistory: 'ငွေဖြည့်တောင်းဆိုမှုများ', menu: 'မီနူး', allProducts: 'ကုန်ပစ္စည်းအားလုံး', aiTools: 'AI ကိရိယာများ',
+    topupWallet: 'Wallet ငွေဖြည့်ရန်', resellerApi: 'ပြန်လည်ရောင်းချသူ API', store: 'စတိုး', account: 'အကောင့်', streaming: 'ရုပ်သံနှင့်တေးဂီတ', telegramSupport: 'Telegram အကူအညီ',
+    weAccept: 'လက်ခံသောငွေပေးချေမှု', bank: 'ဘဏ်', shop: 'စျေးဝယ်', categories: 'အမျိုးအစားများ', support: 'အကူအညီ', quantity: 'အရေအတွက်', fulfillment: 'ပို့ဆောင်ပုံ',
+    walletBalance: 'Wallet လက်ကျန်', totalPayment: 'စုစုပေါင်းပေးချေမှု', required: 'မဖြစ်မနေ', optional: 'မလိုအပ်လျှင် မထည့်နိုင်', pending: 'အတည်ပြုရန်စောင့်နေ', approved: 'အတည်ပြုပြီး', rejected: 'ပယ်ချပြီး'
   }
 };
 const t = key => (COPY[LANG] && COPY[LANG][key]) || COPY.en[key] || key;
+const bi = (en, mm) => LANG === 'mm' ? mm : en;
 const pkgName = p => LANG === 'mm' && p.nameMm ? p.nameMm : p.name;
 const pkgDescription = p => LANG === 'mm' && p.descriptionMm ? p.descriptionMm : p.description;
 const pkgDeliveryLabel = p => LANG === 'mm' && p.deliveryLabelMm ? p.deliveryLabelMm : p.deliveryLabel;
 const pkgDeliveryHint = p => LANG === 'mm' && p.deliveryHintMm ? p.deliveryHintMm : p.deliveryHint;
+const groupLabel = key => LANG === 'mm' ? ({ all: 'အားလုံး', vpn: 'VPN နှင့်လုံခြုံရေး', ai: 'AI ကိရိယာများ', design: 'ဒီဇိုင်းနှင့်ဗီဒီယို', stream: 'ရုပ်သံနှင့်တေးဂီတ', work: 'လုပ်ငန်းသုံး', learn: 'လေ့လာရေး' }[key] || GROUPS[key]) : (key === 'all' ? 'All' : GROUPS[key]);
+const productTypeLabel = type => LANG === 'mm' ? ({ account: 'ချက်ချင်းရအကောင့်', slot: 'ဖိတ်ကြား Slot', upgrade_account: 'အကောင့်အဆင့်မြှင့်' }[type] || type) : type;
 
 /* ---------------- Helpers ---------------- */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -125,7 +136,7 @@ async function loadIdentity() {
 
 function showAuth() {
   if (AUTH.user) {
-    return modal(`<h3>${esc(AUTH.user.name || 'Your account')}</h3><p>${AUTH.user.provider === 'telegram' ? 'Telegram' : 'Google'} account connected.</p><div class="macts"><button class="btn" data-x>Close</button><a class="btn pri" href="/auth/logout">Sign out</a></div>`, 'c');
+    return modal(`<h3>${esc(AUTH.user.name || bi('Your account','သင့်အကောင့်'))}</h3><p>${AUTH.user.provider === 'telegram' ? 'Telegram' : 'Google'} ${bi('account connected.','အကောင့် ချိတ်ဆက်ပြီးပါပြီ။')}</p><div class="macts"><button class="btn" data-x>${bi('Close','ပိတ်ရန်')}</button><a class="btn pri" href="/auth/logout">${bi('Sign out','အကောင့်ထွက်ရန်')}</a></div>`, 'c');
   }
   const unavailable = LANG === 'mm' ? 'ဆာဗာတွင် သတ်မှတ်ချက်မပြည့်စုံသေးပါ' : 'Not configured on this server yet';
   modal(`<h3>${LANG === 'mm' ? 'Exabyte အကောင့်သို့ ဝင်ရန်' : 'Sign in to Exabyte'}</h3><p>${LANG === 'mm' ? 'မှာယူမှုနှင့် ငွေဖြည့်မှတ်တမ်းများကို လုံခြုံစွာ သိမ်းရန် အကောင့်ဝင်ပါ။' : 'Sign in to securely keep your purchases and top-up history.'}</p>
@@ -226,7 +237,7 @@ function deliveryStatusPill(cat) {
 }
 
 const cardHTML = cat => `<a class="card" href="#/p/${cat.id}" style="--c:${cat.color}">
-  <div class="media">${centerMark(cat)}${cat.hot ? '<span class="tag">HOT</span>' : ''}${cat.isNew ? `<span class="tag new" style="${cat.hot ? 'left:auto;right:8px' : ''}">NEW</span>` : (!cat.anyInStock ? `<span class="tag out" style="${cat.hot ? 'left:auto;right:8px' : ''}">SOLD OUT</span>` : '')}${logo(cat)}</div>
+  <div class="media">${centerMark(cat)}${cat.hot ? `<span class="tag">${bi('HOT','လူကြိုက်')}</span>` : ''}${cat.isNew ? `<span class="tag new" style="${cat.hot ? 'left:auto;right:8px' : ''}">${bi('NEW','အသစ်')}</span>` : (!cat.anyInStock ? `<span class="tag out" style="${cat.hot ? 'left:auto;right:8px' : ''}">${bi('SOLD OUT','ကုန်သွားပြီ')}</span>` : '')}${logo(cat)}</div>
   <div class="ct"><h4>${esc(cat.name)}</h4>${deliveryStatusPill(cat)}<span class="from">${LANG === 'mm' ? 'စတင်စျေး' : 'From'} <b>${cat.minMmk ? fmt(cat.minMmk) + ' Ks' : t('free')}</b> · ${cat.packages.length} ${t('packages')}</span></div></a>`;
 
 const section = (title, list, href) => `<section class="sec"><div class="sh"><span class="st">${title}</span><a class="more" href="${href}">${t('seeMore')} ${ICON.arrow}</a></div><div class="grid">${list.map(cardHTML).join('')}</div></section>`;
@@ -240,22 +251,22 @@ function vHome() {
   <section class="hero-row">${bannerHTML()}
     <aside class="hero">
       <div><span class="eyebrow"><i></i> ${LANG === 'mm' ? 'မြန်မာ့ဒစ်ဂျစ်တယ်ဈေးကွက်' : "Myanmar's digital marketplace"}</span><h1>${LANG === 'mm' ? 'ဒစ်ဂျစ်တယ်လိုအပ်ချက်တိုင်း' : 'Everything digital.'}<br><em>${LANG === 'mm' ? 'သင်လိုချိန်မှာ အဆင်သင့်' : 'Ready when you are.'}</em></h1><p>${LANG === 'mm' ? 'Premium app များ၊ AI tool များနှင့် လုံခြုံသော VPN များကို MMK စျေးနှုန်းဖြင့် ဝယ်ယူနိုင်ပါသည်။' : 'Premium apps, AI tools and secure VPN access with transparent MMK pricing and human support.'}</p></div>
-      <div class="hstats"><div><b>${STATE.totalProducts}</b><span>Packages</span></div><div><b>${cats.length}</b><span>Categories</span></div><div><b>24/7</b><span>Support</span></div></div>
+      <div class="hstats"><div><b>${STATE.totalProducts}</b><span>${t('packages')}</span></div><div><b>${cats.length}</b><span>${t('categories')}</span></div><div><b>24/7</b><span>${t('support')}</span></div></div>
       <div class="acts2"><a class="btn pri lg" href="#/products">${ICON.bag} ${LANG === 'mm' ? 'အားလုံးကြည့်ရန်' : 'Browse All'} (${STATE.totalProducts})</a><a class="btn lg" href="#/topup">${ICON.wallet} ${LANG === 'mm' ? 'Wallet ငွေဖြည့်ရန်' : 'Top Up Wallet'}</a></div>
     </aside>
   </section>
   <button class="szt" id="szt">Show banner safe zones</button>
   <div class="mhero"><a class="btn pri" href="#/products">${ICON.bag} ${LANG === 'mm' ? 'ကြည့်ရန်' : 'Browse'} (${STATE.totalProducts})</a><a class="btn" href="#/topup">${ICON.wallet} ${t('topup')}</a></div>
   ${section(t('popular'), featured, '#/products')}
-  ${section('VPN & Security', cats.filter(p => p.group === 'vpn'), '#/products?g=vpn')}
-  ${section('AI Tools & APIs', cats.filter(p => p.group === 'ai'), '#/products?g=ai')}
-  ${section('Design & Creative', cats.filter(p => p.group === 'design'), '#/products?g=design')}
-  ${section('Streaming & Media', cats.filter(p => p.group === 'stream'), '#/products?g=stream')}
+  ${section(groupLabel('vpn'), cats.filter(p => p.group === 'vpn'), '#/products?g=vpn')}
+  ${section(groupLabel('ai'), cats.filter(p => p.group === 'ai'), '#/products?g=ai')}
+  ${section(groupLabel('design'), cats.filter(p => p.group === 'design'), '#/products?g=design')}
+  ${section(groupLabel('stream'), cats.filter(p => p.group === 'stream'), '#/products?g=stream')}
   <section class="sec"><div class="trust">
-    <div><i>${ICON.bolt}</i><span><b>Instant &amp; Manual</b><span>Live stock &amp; fulfillment type per package</span></span></div>
-    <div><i>${ICON.shield}</i><span><b>Full Package Details</b><span>Exact rules &amp; warranty per package</span></span></div>
-    <div><i>${ICON.wallet}</i><span><b>Local MMK Payments</b><span>KBZPay, WavePay, AYA &amp; CB Pay</span></span></div>
-    <div><i>${ICON.chat}</i><span><b>Telegram Support</b><span>24/7 order &amp; warranty help</span></span></div>
+    <div><i>${ICON.bolt}</i><span><b>${bi('Instant & Manual','ချက်ချင်း / လူကိုယ်တိုင်')}</b><span>${bi('Live stock & fulfillment type per package','ပက်ကေ့ချ်တိုင်း၏ လက်ကျန်နှင့် ပို့ဆောင်ပုံကို တိုက်ရိုက်ပြသသည်')}</span></span></div>
+    <div><i>${ICON.shield}</i><span><b>${bi('Full Package Details','ပက်ကေ့ချ်အသေးစိတ်အပြည့်')}</b><span>${bi('Exact rules & warranty per package','ပက်ကေ့ချ်တစ်ခုချင်း၏ စည်းမျဉ်းနှင့် အာမခံ')}</span></span></div>
+    <div><i>${ICON.wallet}</i><span><b>${bi('Local MMK Payments','MMK ဖြင့်ငွေပေးချေမှု')}</b><span>KBZPay, WavePay, AYA &amp; CB Pay</span></span></div>
+    <div><i>${ICON.chat}</i><span><b>${bi('Telegram Support','Telegram အကူအညီ')}</b><span>${bi('24/7 order & warranty help','အော်ဒါနှင့် အာမခံအတွက် ၂၄/၇ အကူအညီ')}</span></span></div>
   </div></section></div>`;
 }
 
@@ -264,8 +275,8 @@ function vProducts(params) {
   if (params.get('g')) catFilter = params.get('g');
   return `<div class="ph"><div class="crumb"><a href="#/">${t('home')}</a> / ${t('products')}</div><h1>${LANG === 'mm' ? 'ကုန်ပစ္စည်းအားလုံး' : 'All Products'} (${STATE.categories.length} · ${STATE.totalProducts})</h1><p>${LANG === 'mm' ? 'ပက်ကေ့ချ်၊ လက်ကျန်၊ အာမခံနှင့် အသေးစိတ်အချက်အလက်များကို ကြည့်ရန် အမျိုးအစားတစ်ခုရွေးပါ။' : 'Select any category to view its packages, stock, warranty, and full description.'}</p></div>
   <section class="sec" style="margin-top:12px"><div class="fbar">
-    <div class="tabs">${Object.entries({ all: 'All', ...GROUPS }).map(([k, v]) => `<button data-tab="${k}" class="${k === catFilter ? 'on' : ''}">${v}</button>`).join('')}</div>
-    <label class="search">${ICON.search}<input id="q" type="search" placeholder="Search categories or packages..." value="${esc(q)}"></label>
+    <div class="tabs">${Object.keys({ all: 'All', ...GROUPS }).map(k => `<button data-tab="${k}" class="${k === catFilter ? 'on' : ''}">${groupLabel(k)}</button>`).join('')}</div>
+    <label class="search">${ICON.search}<input id="q" type="search" placeholder="${bi('Search categories or packages...','အမျိုးအစား သို့မဟုတ် ပက်ကေ့ချ်ရှာရန်...')}" value="${esc(q)}"></label>
   </div><div class="grid wide" id="cards"></div></section>`;
 }
 function drawCards() {
@@ -305,7 +316,7 @@ function vProduct(id, params) {
           ${logo(cat)}
           <b>${esc(pkgName(k))}</b>
           <div class="meta">
-            <span class="pill ${k.isInstant ? '' : 'man'}">${k.isInstant ? '⚡ Instant' : (k.productType === 'slot' ? '📩 Slot Invite' : '🛠️ Upgrade')}</span>
+            <span class="pill ${k.isInstant ? '' : 'man'}">${k.isInstant ? `⚡ ${t('instant')}` : (k.productType === 'slot' ? `📩 ${bi('Slot Invite','Slot ဖိတ်ကြားမှု')}` : `🛠️ ${bi('Upgrade','အဆင့်မြှင့်')}`)}</span>
             <span class="pill ${k.inStock ? 'stk' : 'out'}">${stkText}</span>
           </div>
           <span class="pr">${k.mmk ? `${fmt(k.mmk)} <span>Ks</span>` : t('free')}</span>
@@ -333,7 +344,7 @@ function updateSelectedPackageDetails() {
   const k = curCat.packages[selIdx];
   if (!k) return;
 
-  const stockLabel = k.available === null ? '∞ accounts' : `${k.available} accounts`;
+  const stockLabel = k.available === null ? bi('∞ accounts','အကောင့် အကန့်အသတ်မရှိ') : `${k.available} ${bi('accounts','အကောင့်')}`;
   const maxStock = k.isTestOutline ? 1 : (typeof k.available === 'number' && k.available > 0 ? k.available : 50);
   if (curQty > maxStock) curQty = Math.max(1, maxStock);
 
@@ -342,14 +353,14 @@ function updateSelectedPackageDetails() {
   if (badgesEl) {
     badgesEl.innerHTML = `
       <span class="badge ${k.isInstant ? '' : 'w'}">${k.isInstant ? ICON.bolt : ICON.clock} ${esc(pkgDeliveryLabel(k))}</span>
-      <span class="badge b">${ICON.shield} ${esc(k.productType.toUpperCase())}</span>`;
+      <span class="badge b">${ICON.shield} ${esc(productTypeLabel(k.productType))}</span>`;
   }
   const metaEl = $('#pmeta');
   if (metaEl) {
     metaEl.innerHTML = `
       <li><b>${LANG === 'mm' ? 'ရွေးထားသည်' : 'Selected'}:</b> ${esc(pkgName(k))}</li>
       <li><b>${t('price')}:</b> ${k.mmk ? fmt(k.mmk) + ' Ks' : t('free')}</li>
-      <li><b>Stock:</b> ${esc(stockLabel)} · <b>Sold:</b> ${fmt(k.sold)}</li>
+      <li><b>${t('stock')}:</b> ${esc(stockLabel)} · <b>${t('sold')}:</b> ${fmt(k.sold)}</li>
       <li><b>${LANG === 'mm' ? 'ပို့ဆောင်မှု' : 'Fulfillment'}:</b> ${esc(pkgDeliveryHint(k))}</li>`;
   }
 
@@ -369,12 +380,12 @@ function updateSelectedPackageDetails() {
         <div class="pd-stat"><small>${t('price')}</small><b>${k.mmk ? fmt(k.mmk) + ' Ks' : t('free')}</b></div>
         <div class="pd-stat"><small>${t('stock')}</small><b>${esc(stockLabel)}</b></div>
         <div class="pd-stat"><small>${t('sold')}</small><b>${fmt(k.sold)}</b></div>
-        <div class="pd-stat"><small>${t('type')}</small><b>${esc(k.productType)}</b></div>
+        <div class="pd-stat"><small>${t('type')}</small><b>${esc(productTypeLabel(k.productType))}</b></div>
       </div>
       ${promos ? `<div class="pd-promo">${esc(promos)}</div>` : ''}
       <div class="pd-desc-lbl">${t('packageDetails')}</div>
       <div class="pd-desc ${LANG === 'mm' ? 'mm-copy' : ''}">${linkify(pkgDescription(k) || `${pkgName(k)}\n\n${pkgDeliveryHint(k)}`)}</div>
-      ${LANG === 'mm' ? `<div class="lang-note">မူရင်း API အချက်အလက်မှ ပက်ကေ့ချ်အမျိုးအစား၊ ကာလ၊ ပို့ဆောင်ပုံနှင့် အာမခံကို မြန်မာလို ရှင်းပြထားပါသည်။</div>` : ''}`;
+      ${LANG === 'mm' ? `<div class="lang-note">API မှရရှိသော ပက်ကေ့ချ်အချက်အလက်နှင့် အာမခံစည်းမျဉ်းအားလုံးကို မြန်မာလို ပြသထားပါသည်။</div>` : ''}`;
   }
 
   // Step 2: Dynamic Order Input (matches exact Telegram bot prompt per package type)
@@ -385,17 +396,17 @@ function updateSelectedPackageDetails() {
 
   if (k.requiresEmail) {
     // Slot product: "📧 Please enter email(s) to receive slot (one email per line). 💡 Quantity will be auto-calculated based on the number of emails you enter."
-    if (titleEl) titleEl.textContent = 'Enter Email(s) to Receive Slot';
-    if (reqNote) reqNote.textContent = 'Required · Auto-calculates quantity';
+    if (titleEl) titleEl.textContent = bi('Enter Email(s) to Receive Slot','Slot လက်ခံရန် Email ထည့်ပါ');
+    if (reqNote) reqNote.textContent = bi('Required · Auto-calculates quantity','မဖြစ်မနေ · အရေအတွက်အလိုအလျောက်တွက်မည်');
     const monthsSelect = (k.requiresSlotMonths && Array.isArray(k.allowedMonths))
-      ? `<div style="margin-bottom:14px"><label class="fld"><span>Slot Duration (Months) *</span><select id="f_months" style="width:100%;background:transparent;border:0;border-bottom:1px solid var(--bd2);padding:10px 0;font-size:15px;color:#fff">${k.allowedMonths.map(m => `<option value="${m}" style="background:var(--bg1)">${m} Month${m > 1 ? 's' : ''}</option>`).join('')}</select></label></div>`
+      ? `<div style="margin-bottom:14px"><label class="fld"><span>${bi('Slot Duration (Months)','Slot အသုံးပြုမည့်ကာလ (လ)')} *</span><select id="f_months" style="width:100%;background:transparent;border:0;border-bottom:1px solid var(--bd2);padding:10px 0;font-size:15px;color:#fff">${k.allowedMonths.map(m => `<option value="${m}" style="background:var(--bg1)">${m} ${bi(m > 1 ? 'Months' : 'Month','လ')}</option>`).join('')}</select></label></div>`
       : '';
     rf.innerHTML = `${monthsSelect}
       <label class="fld">
-        <span>📧 Please enter email(s) to receive slot (one email per line) *</span>
+        <span>📧 ${bi('Please enter email(s) to receive slot (one email per line)','Slot လက်ခံမည့် Email များကို တစ်ကြောင်းလျှင် တစ်ခုစီထည့်ပါ')} *</span>
         <textarea id="f_emails" rows="3" placeholder="user1@gmail.com&#10;user2@gmail.com"></textarea>
       </label>
-      <p class="help" style="margin-top:8px">💡 Quantity will be auto-calculated based on the number of emails you enter (<b id="em_count">1</b> slot${curQty > 1 ? 's' : ''}).</p>`;
+      <p class="help" style="margin-top:8px">💡 ${bi('Quantity is calculated from the number of emails','ထည့်ထားသော Email အရေအတွက်အတိုင်း Slot အရေအတွက်ကို အလိုအလျောက်တွက်ပေးမည်')} (<b id="em_count">1</b>)</p>`;
     const ta = $('#f_emails');
     if (ta) {
       ta.oninput = () => {
@@ -407,14 +418,14 @@ function updateSelectedPackageDetails() {
     }
   } else if (k.requiresAccounts) {
     // Upgrade Account product: enter account(s) one per line
-    if (titleEl) titleEl.textContent = 'Enter Account(s) to Upgrade';
-    if (reqNote) reqNote.textContent = 'Required · 1 account per line';
+    if (titleEl) titleEl.textContent = bi('Enter Account(s) to Upgrade','အဆင့်မြှင့်မည့် အကောင့်များထည့်ပါ');
+    if (reqNote) reqNote.textContent = bi('Required · 1 account per line','မဖြစ်မနေ · တစ်ကြောင်းလျှင် အကောင့်တစ်ခု');
     rf.innerHTML = `
       <label class="fld">
-        <span>🛠️ Enter account identifier(s) for upgrade (one per line — Email or Email | Password) *</span>
+        <span>🛠️ ${bi('Enter account details for upgrade (one per line — Email or Email | Password)','အဆင့်မြှင့်မည့်အကောင့်ကို တစ်ကြောင်းလျှင် တစ်ခုစီထည့်ပါ — Email သို့မဟုတ် Email | Password')} *</span>
         <textarea id="f_accounts" rows="3" placeholder="account1@gmail.com&#10;account2@gmail.com"></textarea>
       </label>
-      <p class="help" style="margin-top:8px">💡 Quantity is auto-calculated from the number of accounts entered (<b id="ac_count">1</b>).</p>`;
+      <p class="help" style="margin-top:8px">💡 ${bi('Quantity is calculated from the number of accounts','ထည့်ထားသောအကောင့်အရေအတွက်အတိုင်း အရေအတွက်ကို အလိုအလျောက်တွက်ပေးမည်')} (<b id="ac_count">1</b>)</p>`;
     const ta = $('#f_accounts');
     if (ta) {
       ta.oninput = () => {
@@ -426,15 +437,15 @@ function updateSelectedPackageDetails() {
     }
   } else {
     // Instant Account product: "✏️ Enter quantity to buy (1-N):"
-    if (titleEl) titleEl.textContent = `Enter Quantity to Buy (1–${maxStock})`;
-    if (reqNote) reqNote.textContent = 'Instant Delivery';
+    if (titleEl) titleEl.textContent = bi(`Enter Quantity to Buy (1–${maxStock})`,`ဝယ်ယူမည့်အရေအတွက်ထည့်ပါ (၁–${maxStock})`);
+    if (reqNote) reqNote.textContent = bi('Instant Delivery','ချက်ချင်းပို့ပေးမည်');
     rf.innerHTML = `<div class="fields two">
-      <div class="fld"><span>✏️ Quantity to buy (1–${maxStock})</span>
+      <div class="fld"><span>✏️ ${bi(`Quantity to buy (1–${maxStock})`,`ဝယ်ယူမည့်အရေအတွက် (၁–${maxStock})`)}</span>
         <div class="qrow"><button type="button" class="qbtn" data-q="-1">−</button><input id="f_qty" class="qin" type="number" min="1" max="${maxStock}" value="${curQty}"><button type="button" class="qbtn" data-q="1">+</button></div>
       </div>
-      <label class="fld"><span>Telegram / Email (Optional backup)</span><input id="f_email" type="text" placeholder="@username or email" autocomplete="off"></label>
+      <label class="fld"><span>${bi('Telegram / Email (Optional backup)','Telegram / Email (အရန်ဆက်သွယ်ရန်)')}</span><input id="f_email" type="text" placeholder="@username or email" autocomplete="off"></label>
     </div>
-    <p class="help" style="margin-top:8px">⚡ Account credentials / JSON keys are delivered immediately on screen and saved in History.</p>`;
+    <p class="help" style="margin-top:8px">⚡ ${bi('Account credentials / JSON keys are delivered immediately and saved in History.','အကောင့်အချက်အလက် / JSON key များကို ချက်ချင်းပြသပြီး မှတ်တမ်းတွင် သိမ်းထားမည်။')}</p>`;
     const qin = $('#f_qty');
     if (qin) {
       qin.oninput = () => {
@@ -457,16 +468,16 @@ function drawPay() {
 
   let actionBtn = '';
   if (!k.inStock) {
-    actionBtn = `<button class="btn lg block" disabled>OUT OF STOCK</button>`;
+    actionBtn = `<button class="btn lg block" disabled>${bi('OUT OF STOCK','လက်ကျန်မရှိ')}</button>`;
   } else if (short > 0) {
-    actionBtn = `<a class="btn pri lg block" href="#/topup?need=${short}">${ICON.wallet} Top Up (+${fmt(short)} Ks)</a>`;
+    actionBtn = `<a class="btn pri lg block" href="#/topup?need=${short}">${ICON.wallet} ${bi('Top Up','ငွေဖြည့်ရန်')} (+${fmt(short)} Ks)</a>`;
   } else {
     actionBtn = `<button class="btn pri lg block" data-act="confirm">${k.isTestOutline ? (LANG === 'mm' ? '5 GB စမ်းသပ် Key ရယူရန်' : 'GET 5 GB TEST KEY') : (LANG === 'mm' ? 'ယခုဝယ်ယူရန်' : 'BUY NOW')}</button>`;
   }
 
   pb.innerHTML = `<div><h3>${LANG === 'mm' ? 'ရွေးထားသည်' : 'Selected'} (${esc(pkgDeliveryLabel(k))})</h3>
     <div class="sel">${esc(pkgName(k))} × ${curQty}
-      <small>${!k.inStock ? '<span class="warn">Out of stock</span>' : (short > 0 ? `<span class="warn">Wallet short by ${fmt(short)} Ks (Balance: ${fmt(STATE.bal)} Ks)</span>` : `Wallet Balance: ${fmt(STATE.bal)} Ks`)}</small>
+      <small>${!k.inStock ? `<span class="warn">${bi('Out of stock','လက်ကျန်မရှိ')}</span>` : (short > 0 ? `<span class="warn">${bi('Wallet short by','Wallet လိုငွေ')} ${fmt(short)} Ks (${t('walletBalance')}: ${fmt(STATE.bal)} Ks)</span>` : `${t('walletBalance')}: ${fmt(STATE.bal)} Ks`)}</small>
     </div></div>
     <div class="tot"><span>${LANG === 'mm' ? 'စုစုပေါင်း' : 'Total Payment'}</span><b>${total ? fmt(total) + ' Ks' : t('free')}</b></div>
     ${actionBtn}`;
@@ -484,7 +495,7 @@ function confirmBuy() {
     const invalid = emailList.find(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
     if (!emailList.length || invalid) {
       $('#f_emails')?.focus();
-      return toast(invalid ? `Invalid email: ${invalid}` : 'Please enter at least one valid email to receive the slot.');
+      return toast(invalid ? `${bi('Invalid email','Email မမှန်ပါ')}: ${invalid}` : bi('Please enter at least one valid email to receive the slot.','Slot လက်ခံရန် မှန်ကန်သော Email အနည်းဆုံးတစ်ခု ထည့်ပါ။'));
     }
     curQty = emailList.length;
     emailVal = emailList[0];
@@ -492,7 +503,7 @@ function confirmBuy() {
     accList = getParsedLines('#f_accounts');
     if (!accList.length) {
       $('#f_accounts')?.focus();
-      return toast('Please enter your account identifier(s) to upgrade.');
+      return toast(bi('Please enter your account identifier(s) to upgrade.','အဆင့်မြှင့်မည့် အကောင့်အချက်အလက်ကို ထည့်ပါ။'));
     }
     curQty = accList.length;
   }
@@ -502,13 +513,13 @@ function confirmBuy() {
     <div class="msum">
       <div class="mrow"><span>${t('packages')}</span><b>${esc(pkgName(k))}</b></div>
       <div class="mrow"><span>${LANG === 'mm' ? 'ပို့ဆောင်မှု' : 'Fulfillment'}</span><b>${esc(pkgDeliveryLabel(k))}</b></div>
-      <div class="mrow"><span>Quantity</span><b>${curQty}</b></div>
-      ${emailList.length ? `<div class="mrow"><span>Slot Email(s)</span><b>${esc(emailList.join(', '))}</b></div>` : ''}
-      ${accList.length ? `<div class="mrow"><span>Upgrade Account(s)</span><b>${esc(accList.join(', '))}</b></div>` : ''}
-      <div class="mrow"><span>Balance After</span><b>${fmt(STATE.bal - total)} Ks</b></div>
+      <div class="mrow"><span>${t('quantity')}</span><b>${curQty}</b></div>
+      ${emailList.length ? `<div class="mrow"><span>${bi('Slot Email(s)','Slot Email များ')}</span><b>${esc(emailList.join(', '))}</b></div>` : ''}
+      ${accList.length ? `<div class="mrow"><span>${bi('Upgrade Account(s)','အဆင့်မြှင့်မည့်အကောင့်များ')}</span><b>${esc(accList.join(', '))}</b></div>` : ''}
+      <div class="mrow"><span>${bi('Balance After','ဝယ်ပြီးနောက်လက်ကျန်')}</span><b>${fmt(STATE.bal - total)} Ks</b></div>
       <div class="mrow t"><span>${LANG === 'mm' ? 'စုစုပေါင်း' : 'Total Payment'}</span><b>${total ? fmt(total) + ' Ks' : t('free')}</b></div>
     </div>
-    <div class="macts"><button class="btn lg" data-x>Cancel</button><button class="btn pri lg" id="ok">Confirm &amp; Pay</button></div>`);
+    <div class="macts"><button class="btn lg" data-x>${bi('Cancel','မလုပ်တော့ပါ')}</button><button class="btn pri lg" id="ok">${bi('Confirm & Pay','အတည်ပြုပြီး ပေးချေမည်')}</button></div>`);
   m.querySelector('#ok').onclick = () => {
     m.remove();
     doBuy({
@@ -544,67 +555,67 @@ function formatOrderCredentials(o) {
   if (Array.isArray(o.accounts) && o.accounts.length) {
     return o.accounts.map((a, idx) => {
       const lines = [];
-      if (o.accounts.length > 1) lines.push(`--- Account #${idx + 1} ---`);
-      if (a.user) lines.push(a.password ? `User: ${a.user}` : a.user);
-      if (a.password) lines.push(`Pass: ${a.password}`);
-      if (a.verifyEmail) lines.push(`Verify Email: ${a.verifyEmail}`);
-      if (a.expiryText) lines.push(`Expiry: ${a.expiryText}`);
-      if (a.otherInfo) lines.push(`Info: ${a.otherInfo}`);
+      if (o.accounts.length > 1) lines.push(`--- ${bi('Account','အကောင့်')} #${idx + 1} ---`);
+      if (a.user) lines.push(a.password ? `${bi('User','အသုံးပြုသူ')}: ${a.user}` : a.user);
+      if (a.password) lines.push(`${bi('Password','စကားဝှက်')}: ${a.password}`);
+      if (a.verifyEmail) lines.push(`${bi('Verify Email','အတည်ပြု Email')}: ${a.verifyEmail}`);
+      if (a.expiryText) lines.push(`${bi('Expiry','သက်တမ်းကုန်ချိန်')}: ${a.expiryText}`);
+      if (a.otherInfo) lines.push(`${bi('Info','အချက်အလက်')}: ${a.otherInfo}`);
       return lines.join('\n');
     }).join('\n\n');
   }
   if (o.deliveryMode === 'slot') {
-    return `Status: ${o.fulfillmentStatus || 'waiting_seller'}\nSlot Invitation Email: ${o.customerEmail || 'Submitted'}\nNote: Admin will send the invitation link to your email shortly.`;
+    return `${bi('Status','အခြေအနေ')}: ${o.fulfillmentStatus || 'waiting_seller'}\n${bi('Slot Invitation Email','Slot ဖိတ်ကြားမည့် Email')}: ${o.customerEmail || bi('Submitted','ပို့ပြီး')}\n${bi('Note: Admin will send the invitation link to your email shortly.','မှတ်ချက် — အက်ဒမင်က ဖိတ်ကြား link ကို သင့် Email သို့ မကြာမီပို့ပေးပါမည်။')}`;
   }
   if (o.deliveryMode === 'upgrade') {
-    return `Status: ${o.fulfillmentStatus || 'waiting_seller'}\nUpgrade Account(s): ${(o.customerAccounts || []).join(', ')}\nNote: Supplier has received your order and is upgrading your account.`;
+    return `${bi('Status','အခြေအနေ')}: ${o.fulfillmentStatus || 'waiting_seller'}\n${bi('Upgrade Account(s)','အဆင့်မြှင့်မည့်အကောင့်များ')}: ${(o.customerAccounts || []).join(', ')}\n${bi('Note: Supplier has received your order and is upgrading your account.','မှတ်ချက် — ရောင်းချသူက အော်ဒါလက်ခံရရှိပြီး အကောင့်ကို အဆင့်မြှင့်နေပါသည်။')}`;
   }
-  return o.code || 'Order recorded.';
+  return o.code || bi('Order recorded.','အော်ဒါမှတ်တမ်းတင်ပြီးပါပြီ။');
 }
 
 function showOrder(o, fresh) {
   if (!o) return;
   const credText = formatOrderCredentials(o);
-  modal(`${fresh ? `<div class="okic">${ICON.check}</div><h3>${o.status === 'completed' ? 'Purchase Completed' : 'Order Submitted'}</h3>` : `<h3>${esc(o.productName || o.n)}</h3>`}
-    <p>${esc(o.productName || o.n)} · Qty ${o.quantity || 1} · <b>${fmt(o.totalMmk || o.p)} Ks</b></p>
-    <div class="oid">Order Code: ${esc(o.orderCode || o.id)} · Status: ${esc((o.status || 'completed').toUpperCase())}</div>
+  modal(`${fresh ? `<div class="okic">${ICON.check}</div><h3>${o.status === 'completed' ? bi('Purchase Completed','ဝယ်ယူမှုအောင်မြင်ပါသည်') : bi('Order Submitted','အော်ဒါပို့ပြီးပါပြီ')}</h3>` : `<h3>${esc(o.productName || o.n)}</h3>`}
+    <p>${esc(o.productName || o.n)} · ${t('quantity')} ${o.quantity || 1} · <b>${fmt(o.totalMmk || o.p)} Ks</b></p>
+    <div class="oid">${bi('Order Code','အော်ဒါကုဒ်')}: ${esc(o.orderCode || o.id)} · ${bi('Status','အခြေအနေ')}: ${esc((o.status || 'completed').toUpperCase())}</div>
     <div class="cred" id="cred">${esc(credText)}</div>
-    ${o.categoryId === 'outline-vpn' ? '<p style="font-size:12px;color:var(--t2)">Install Outline Client → tap "+" → paste your ss:// access key above.</p>' : ''}
-    <div class="macts"><button class="btn lg" data-copy="${esc(credText)}">Copy Details</button><a class="btn pri lg" href="#/orders?t=buy" data-x>View in History</a></div>`, 'c');
+    ${o.categoryId === 'outline-vpn' ? `<p style="font-size:12px;color:var(--t2)">${bi('Install Outline Client → tap "+" → paste your ss:// access key above.','Outline Client ကိုသွင်းပါ → "+" ကိုနှိပ်ပါ → အပေါ်ရှိ ss:// access key ကို ထည့်ပါ။')}</p>` : ''}
+    <div class="macts"><button class="btn lg" data-copy="${esc(credText)}">${bi('Copy Details','အသေးစိတ်ကူးယူရန်')}</button><a class="btn pri lg" href="#/orders?t=buy" data-x>${bi('View in History','မှတ်တမ်းတွင်ကြည့်ရန်')}</a></div>`, 'c');
 }
 
 /* ---------------- Top Up View ---------------- */
 function vTopup(params) {
   const need = +params.get('need') || 0, pre = need ? Math.max(1000, Math.ceil(need / 500) * 500) : '';
-  return `<div class="ph"><div class="crumb"><a href="#/">Home</a> / Top Up</div><h1>Top Up Wallet</h1><p>Transfer the exact MMK amount, upload your payment screenshot, and get credited.</p></div>
+  return `<div class="ph"><div class="crumb"><a href="#/">${t('home')}</a> / ${t('topup')}</div><h1>${t('topupWallet')}</h1><p>${bi('Transfer the exact MMK amount, upload your payment screenshot, and get credited.','သတ်မှတ်ထားသော MMK ပမာဏအတိအကျ လွှဲပြီး ငွေလွှဲ screenshot တင်ပါ။ အက်ဒမင်အတည်ပြုပြီးပါက Wallet ထဲသို့ ငွေဝင်ပါမည်။')}</p></div>
   <div class="pp" style="grid-template-columns:minmax(0,1fr)">
   <div class="steps" style="max-width:860px;width:100%;margin:0 auto">
-    <section class="scard"><div class="shd"><span class="num">1</span><h2>Enter Amount</h2><small>Min 1,000 Ks</small></div>
-      <label class="fld big"><span>Amount (Ks)</span><input id="amt" type="number" inputmode="numeric" min="1000" step="500" placeholder="0" value="${pre}"></label>
+    <section class="scard"><div class="shd"><span class="num">1</span><h2>${bi('Enter Amount','ငွေပမာဏထည့်ပါ')}</h2><small>${bi('Min','အနည်းဆုံး')} 1,000 Ks</small></div>
+      <label class="fld big"><span>${bi('Amount','ငွေပမာဏ')} (Ks)</span><input id="amt" type="number" inputmode="numeric" min="1000" step="500" placeholder="0" value="${pre}"></label>
       <div class="amts">${[5000, 10000, 20000, 50000].map(v => `<button data-amt="${v}">${fmt(v)} Ks</button>`).join('')}</div></section>
-    <section class="scard"><div class="shd"><span class="num">2</span><h2>Payment Method</h2></div>
+    <section class="scard"><div class="shd"><span class="num">2</span><h2>${bi('Payment Method','ငွေပေးချေနည်း')}</h2></div>
       <div class="methods">${METHODS.map(([n, c, a], i) => `<button class="mth ${i ? '' : 'on'}" data-m="${i}"><span class="mi" style="background:${c};${c === '#ffcc00' ? 'color:#111' : ''}">${a}</span>${n}</button>`).join('')}</div></section>
-    <section class="scard"><div class="shd"><span class="num">3</span><h2>Transfer To</h2></div>
+    <section class="scard"><div class="shd"><span class="num">3</span><h2>${bi('Transfer To','လွှဲရမည့်အကောင့်')}</h2></div>
       <div class="acct" id="acct"></div></section>
-    <section class="scard"><div class="shd"><span class="num">4</span><h2>Upload Payment Screenshot</h2><small>Required</small></div>
-      <label class="drop" id="drop"><input type="file" id="file" accept="image/png,image/jpeg,image/webp"><span><span class="ui">${ICON.up}</span><b>Tap to upload or drag &amp; drop</b><small>PNG, JPG or WEBP · max 5 MB</small></span></label>
-      <ul class="rules"><li>Transaction ID, amount and date must be clearly visible.</li><li>Amount must match your transfer. Edited screenshots are rejected.</li></ul></section>
-    <section class="paybar stick"><div><h3>Top Up Summary</h3><div class="sel" id="tsum">Enter amount<small>Screenshot required</small></div></div>
-      <div class="tot"><span>Amount</span><b id="tamt">0 Ks</b></div><button class="btn pri lg block" id="send" disabled>SUBMIT TOP UP</button></section>
+    <section class="scard"><div class="shd"><span class="num">4</span><h2>${bi('Upload Payment Screenshot','ငွေလွှဲ Screenshot တင်ပါ')}</h2><small>${t('required')}</small></div>
+      <label class="drop" id="drop"><input type="file" id="file" accept="image/png,image/jpeg,image/webp"><span><span class="ui">${ICON.up}</span><b>${bi('Tap to upload or drag & drop','တင်ရန်နှိပ်ပါ သို့မဟုတ် ဖိုင်ကိုဆွဲထည့်ပါ')}</b><small>PNG, JPG or WEBP · ${bi('max','အများဆုံး')} 5 MB</small></span></label>
+      <ul class="rules"><li>${bi('Transaction ID, amount and date must be clearly visible.','Transaction ID၊ ငွေပမာဏနှင့် ရက်စွဲကို ရှင်းလင်းစွာ မြင်ရမည်။')}</li><li>${bi('Amount must match your transfer. Edited screenshots are rejected.','ထည့်ထားသောပမာဏနှင့် ငွေလွှဲပမာဏ တူရမည်။ ပြင်ဆင်ထားသော screenshot များကို လက်မခံပါ။')}</li></ul></section>
+    <section class="paybar stick"><div><h3>${bi('Top Up Summary','ငွေဖြည့်အကျဉ်းချုပ်')}</h3><div class="sel" id="tsum">${bi('Enter amount','ငွေပမာဏထည့်ပါ')}<small>${bi('Screenshot required','Screenshot မဖြစ်မနေလိုသည်')}</small></div></div>
+      <div class="tot"><span>${bi('Amount','ငွေပမာဏ')}</span><b id="tamt">0 Ks</b></div><button class="btn pri lg block" id="send" disabled>${bi('SUBMIT TOP UP','ငွေဖြည့်တောင်းဆိုမည်')}</button></section>
   </div></div>`;
 }
 function initTopup() {
   let img = '', mi = 0;
-  const acct = () => { const [n, , , no] = METHODS[mi]; $('#acct').innerHTML = `<div><small>${n}</small><b>${no}</b><span>Exabyte Digital Store</span></div><button class="cpy" data-copy="${no.replace(/\s/g, '')}">Copy</button>`; };
+  const acct = () => { const [n, , , no] = METHODS[mi]; $('#acct').innerHTML = `<div><small>${n}</small><b>${no}</b><span>Exabyte Digital Store</span></div><button class="cpy" data-copy="${no.replace(/\s/g, '')}">${bi('Copy','ကူးယူရန်')}</button>`; };
   const chk = () => {
     const a = +$('#amt').value || 0; $('#tamt').textContent = fmt(a) + ' Ks';
     $$('[data-amt]').forEach(b => b.classList.toggle('on', +b.dataset.amt === a));
-    $('#tsum').innerHTML = `${a >= 1000 ? fmt(a) + ' Ks via ' + METHODS[mi][0] : 'Enter amount (min 1,000)'}<small>${img ? '<span style="color:#4ade80">Screenshot attached</span>' : '<span class="warn">Screenshot required</span>'}</small>`;
+    $('#tsum').innerHTML = `${a >= 1000 ? fmt(a) + ' Ks · ' + METHODS[mi][0] : bi('Enter amount (min 1,000)','ငွေပမာဏထည့်ပါ (အနည်းဆုံး ၁,၀၀၀)')}<small>${img ? `<span style="color:#4ade80">${bi('Screenshot attached','Screenshot တင်ပြီး')}</span>` : `<span class="warn">${bi('Screenshot required','Screenshot မဖြစ်မနေလိုသည်')}</span>`}</small>`;
     $('#send').disabled = !(a >= 1000 && img);
   };
   const load = f => {
-    if (!f || !f.type.startsWith('image/')) return toast('Please choose an image');
-    if (f.size > 5e6) return toast('File too large (max 5 MB)');
+    if (!f || !f.type.startsWith('image/')) return toast(bi('Please choose an image','ပုံဖိုင်ရွေးပါ။'));
+    if (f.size > 5e6) return toast(bi('File too large (max 5 MB)','ဖိုင်အရွယ်အစားကြီးလွန်းသည် (အများဆုံး 5 MB)'));
     const r = new FileReader();
     r.onload = () => {
       const im = new Image(); im.onload = () => {
@@ -612,7 +623,7 @@ function initTopup() {
         cv.width = im.width * sc; cv.height = im.height * sc; cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
         img = cv.toDataURL('image/jpeg', .75);
         const d = $('#drop'); d.classList.add('has');
-        d.innerHTML = `<input type="file" id="file" accept="image/png,image/jpeg,image/webp"><img src="${img}" alt="Payment screenshot preview"><span class="chg">Change</span>`;
+        d.innerHTML = `<input type="file" id="file" accept="image/png,image/jpeg,image/webp"><img src="${img}" alt="${bi('Payment screenshot preview','ငွေလွှဲ screenshot နမူနာ')}"><span class="chg">${bi('Change','ပြောင်းရန်')}</span>`;
         $('#file').onchange = e => load(e.target.files[0]); chk();
       }; im.src = r.result;
     }; r.readAsDataURL(f);
@@ -636,11 +647,11 @@ function initTopup() {
       if (!res.success) { $('#send').disabled = false; return toast(res.message || 'Failed'); }
       STATE.tops.unshift(res.topup);
       modal(`<div class="okic">${ICON.check}</div><h3>${LANG === 'mm' ? 'ငွေဖြည့်တောင်းဆိုမှု ပို့ပြီးပါပြီ' : 'Top Up Submitted'}</h3><p>${LANG === 'mm' ? 'ငွေလွှဲ screenshot ကို Telegram admin bot သို့ ပို့ထားပြီး အက်ဒမင်အတည်ပြုချက်ကို စောင့်နေပါသည်။' : 'Your payment screenshot was sent to the Telegram admin review bot. Your wallet will update after approval.'}</p><div class="oid">Request ID: ${res.topup.id}</div>
-        <div class="macts"><a class="btn lg" href="#/orders?t=top" data-x>View Requests</a><a class="btn pri lg" href="#/products" data-x>Browse Store</a></div>`, 'c');
+        <div class="macts"><a class="btn lg" href="#/orders?t=top" data-x>${bi('View Requests','တောင်းဆိုမှုကြည့်ရန်')}</a><a class="btn pri lg" href="#/products" data-x>${bi('Browse Store','စတိုးကြည့်ရန်')}</a></div>`, 'c');
       location.hash = '#/orders?t=top';
     } catch {
       $('#send').disabled = false;
-      toast('Network error submitting top up');
+      toast(bi('Network error submitting top up','ငွေဖြည့်တောင်းဆိုရာတွင် ကွန်ရက်ပြဿနာဖြစ်နေသည်။'));
     }
   };
   acct(); chk();
@@ -652,29 +663,29 @@ function vOrders(params) {
   const buys = STATE.buys.length ? STATE.buys.map(o => {
     const c = STATE.categories.find(x => x.id === o.categoryId) || STATE.categories[0] || { color: '#2f6bff', name: 'E' };
     const code = o.orderCode || o.id;
-    return `<div class="hr">${logo(c)}<div class="ht"><b>${esc(o.productName || o.n)} (×${o.quantity || 1})</b><small>${esc(code)} · ${esc(new Date(o.createdAt || o.d).toLocaleString())} · ${esc((o.status || 'completed').toUpperCase())}</small></div><div class="ha"><b>-${fmt(o.totalMmk || o.p)} Ks</b><button class="lk" data-order="${esc(code)}">View details</button></div></div>`;
-  }).join('') : `<p class="empty">No purchases yet. <a class="lk" href="#/products">Browse products</a></p>`;
+    return `<div class="hr">${logo(c)}<div class="ht"><b>${esc(o.productName || o.n)} (×${o.quantity || 1})</b><small>${esc(code)} · ${esc(new Date(o.createdAt || o.d).toLocaleString())} · ${esc((o.status || 'completed').toUpperCase())}</small></div><div class="ha"><b>-${fmt(o.totalMmk || o.p)} Ks</b><button class="lk" data-order="${esc(code)}">${bi('View details','အသေးစိတ်ကြည့်ရန်')}</button></div></div>`;
+  }).join('') : `<p class="empty">${bi('No purchases yet.','ဝယ်ယူမှုမရှိသေးပါ။')} <a class="lk" href="#/products">${bi('Browse products','ကုန်ပစ္စည်းများကြည့်ရန်')}</a></p>`;
 
   const tops = STATE.tops.length ? STATE.tops.map(x => {
     const ok = x.status === 'approved' || x.ok;
-    return `<div class="hr"><span class="thumb topup-thumb">${ICON.wallet}</span><div class="ht"><b>${esc(x.method || x.m)} Top Up</b><small>${esc(x.id)} · ${esc(new Date(x.createdAt || x.d).toLocaleString())}</small></div><div class="ha"><b>+${fmt(x.amountMmk || x.amt)} Ks</b><span class="stt ${ok ? 'ok' : ''}">${ok ? 'APPROVED' : (x.status === 'rejected' ? 'REJECTED' : 'PENDING REVIEW')}</span></div></div>`;
-  }).join('') : `<p class="empty">No top up requests yet. <a class="lk" href="#/topup">Top up now</a></p>`;
+    return `<div class="hr"><span class="thumb topup-thumb">${ICON.wallet}</span><div class="ht"><b>${esc(x.method || x.m)} ${COPY[LANG].topup}</b><small>${esc(x.id)} · ${esc(new Date(x.createdAt || x.d).toLocaleString())}</small></div><div class="ha"><b>+${fmt(x.amountMmk || x.amt)} Ks</b><span class="stt ${ok ? 'ok' : ''}">${ok ? COPY[LANG].approved : (x.status === 'rejected' ? COPY[LANG].rejected : COPY[LANG].pending)}</span></div></div>`;
+  }).join('') : `<p class="empty">${bi('No top up requests yet.','ငွေဖြည့်တောင်းဆိုမှု မရှိသေးပါ။')} <a class="lk" href="#/topup">${bi('Top up now','ယခုငွေဖြည့်ရန်')}</a></p>`;
 
-  return `<div class="ph"><div class="crumb"><a href="#/">Home</a> / History</div><h1>Order &amp; Top Up History</h1><p>View your delivered account credentials, slot invitations, and top up requests.</p></div>
-  <section class="sec" style="margin-top:12px"><div class="fbar"><div class="tabs"><button data-ot="buy" class="${t === 'buy' ? 'on' : ''}">Product Purchases (${STATE.buys.length})</button><button data-ot="top" class="${t === 'top' ? 'on' : ''}">Top Up Requests (${STATE.tops.length})</button></div></div>
+  return `<div class="ph"><div class="crumb"><a href="#/">${COPY[LANG].home}</a> / ${COPY[LANG].history}</div><h1>${bi('Order & Top Up History','အော်ဒါနှင့် ငွေဖြည့်မှတ်တမ်း')}</h1><p>${bi('View delivered accounts, slot invitations, and top-up requests.','ပို့ဆောင်ပြီးသော အကောင့်များ၊ Slot ဖိတ်ကြားမှုများနှင့် ငွေဖြည့်တောင်းဆိုမှုများကို ကြည့်နိုင်သည်။')}</p></div>
+  <section class="sec" style="margin-top:12px"><div class="fbar"><div class="tabs"><button data-ot="buy" class="${t === 'buy' ? 'on' : ''}">${COPY[LANG].purchaseHistory} (${STATE.buys.length})</button><button data-ot="top" class="${t === 'top' ? 'on' : ''}">${COPY[LANG].topupHistory} (${STATE.tops.length})</button></div></div>
   <div class="hl">${t === 'buy' ? buys : tops}</div></section>`;
 }
 
 /* ---------------- API Status & Documentation View ---------------- */
 function vApi() {
-  return `<div class="ph"><div class="crumb"><a href="#/">Home</a> / API</div><h1>Live API Integration &amp; Reseller Docs</h1><p>Connected to Canboso Buyer API v2 with automatic 1 USD = ${fmt(STATE.rateMmk)} Ks pricing &amp; fulfillment routing.</p></div>
+  return `<div class="ph"><div class="crumb"><a href="#/">${t('home')}</a> / API</div><h1>${bi('Live API Integration & Reseller Docs','တိုက်ရိုက် API ချိတ်ဆက်မှုနှင့် ပြန်လည်ရောင်းချသူလမ်းညွှန်')}</h1><p>${bi(`Connected to Canboso Buyer API v2 with automatic pricing at 1 USD = ${fmt(STATE.rateMmk)} Ks.`,`Canboso Buyer API v2 နှင့် ချိတ်ဆက်ထားပြီး 1 USD = ${fmt(STATE.rateMmk)} Ks နှုန်းဖြင့် အလိုအလျောက်တွက်ချက်သည်။`)}</p></div>
   <div class="pp" style="grid-template-columns:minmax(0,1fr)"><div class="steps" style="max-width:860px;width:100%;margin:0 auto">
-  <section class="scard"><div class="shd"><span class="num">1</span><h2>Live Catalog Status</h2><button class="btn" id="refreshCat" style="margin-left:auto;height:34px;padding:0 12px;font-size:12px">Sync Now</button></div>
+  <section class="scard"><div class="shd"><span class="num">1</span><h2>${bi('Live Catalog Status','တိုက်ရိုက် Catalog အခြေအနေ')}</h2><button class="btn" id="refreshCat" style="margin-left:auto;height:34px;padding:0 12px;font-size:12px">${bi('Sync Now','ယခုပြန်လည်ရယူရန်')}</button></div>
     <div class="msum" style="margin:0">
-      <div class="mrow"><span>Catalog Source</span><b>${esc(STATE.source.toUpperCase())} (${STATE.totalProducts} packages across ${STATE.categories.length} categories)</b></div>
-      <div class="mrow"><span>Exchange &amp; Profit Rate</span><b>$1.00 USD = ${fmt(STATE.rateMmk)} MMK (Ks)</b></div>
-      <div class="mrow"><span>Fulfillment Types</span><b>account (Instant) · slot (Email Invite) · upgrade_account (Manual Upgrade)</b></div>
-      <div class="mrow"><span>Last Synced</span><b>${esc(STATE.fetchedAt ? new Date(STATE.fetchedAt).toLocaleString() : 'Just now')}</b></div>
+      <div class="mrow"><span>${bi('Catalog Source','Catalog ရင်းမြစ်')}</span><b>${esc(STATE.source.toUpperCase())} (${STATE.totalProducts} ${t('packages')} · ${STATE.categories.length} ${t('categories')})</b></div>
+      <div class="mrow"><span>${bi('Exchange & Profit Rate','ငွေလဲနှုန်းနှင့် ရောင်းစျေးနှုန်း')}</span><b>$1.00 USD = ${fmt(STATE.rateMmk)} MMK (Ks)</b></div>
+      <div class="mrow"><span>${bi('Fulfillment Types','ပို့ဆောင်မှုပုံစံများ')}</span><b>${bi('account (Instant) · slot (Email Invite) · upgrade_account (Manual Upgrade)','အကောင့် (ချက်ချင်း) · Slot (Email ဖိတ်ကြားမှု) · အကောင့်အဆင့်မြှင့် (လူကိုယ်တိုင်)')}</b></div>
+      <div class="mrow"><span>${bi('Last Synced','နောက်ဆုံးရယူချိန်')}</span><b>${esc(STATE.fetchedAt ? new Date(STATE.fetchedAt).toLocaleString() : bi('Just now','ယခု'))}</b></div>
     </div></section>
   <section class="scard"><div class="ep"><span class="mt">GET</span><b>/api/catalog</b></div><p class="help" style="margin:0 0 10px">Fetches live Canboso /api/v2/telegram-buyer/products + Outline VPN packages, converts USD to MMK (1$ = 5,500 Ks), and classifies instant vs manual slot/upgrade requirements.</p><div class="code">GET http://localhost:60010/api/catalog</div></section>
   <section class="scard"><div class="ep"><span class="mt post">POST</span><b>/api/purchase</b></div><p class="help" style="margin:0 0 10px">Purchases a package using wallet balance and forwards to POST https://canboso.com/api/v2/telegram-buyer/purchase with Idempotency-Key.</p><div class="code">POST http://localhost:60010/api/purchase\nContent-Type: application/json\n\n{\n  "productId": "6a57762993139fafaedf1672",\n  "quantity": 1,\n  "customerEmail": "buyer@example.com"\n}</div></section>
@@ -758,7 +769,7 @@ document.addEventListener('click', async e => {
   }
 
   const cp = e.target.closest('[data-copy]');
-  if (cp) { navigator.clipboard?.writeText(cp.dataset.copy).then(() => toast('Copied to clipboard'), () => toast('Copy failed')); }
+  if (cp) { navigator.clipboard?.writeText(cp.dataset.copy).then(() => toast(bi('Copied to clipboard','Clipboard သို့ ကူးယူပြီး')), () => toast(bi('Copy failed','ကူးယူမရပါ'))); }
 });
 
 addEventListener('hashchange', render);

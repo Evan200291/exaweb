@@ -249,12 +249,13 @@ function classifyDelivery(p) {
 function translatePackageMm(p, delivery) {
   const rawName = String(p.name || 'Digital package');
   const rawDescription = String(p.description || '').trim();
-  const duration = rawName.match(/(\d+)\s*(day|days|month|months|year|years|week|weeks)/i);
+  const source = `${rawName}\n${rawDescription}`;
+  const duration = source.match(/(\d+)\s*(hour|hours|h|day|days|month|months|year|years|week|weeks)/i);
   const durationMm = duration
-    ? `${duration[1]} ${/day/i.test(duration[2]) ? 'ရက်' : /week/i.test(duration[2]) ? 'ပတ်' : /year/i.test(duration[2]) ? 'နှစ်' : 'လ'}`
+    ? `${duration[1]} ${/^(?:hour|hours|h)$/i.test(duration[2]) ? 'နာရီ' : /day/i.test(duration[2]) ? 'ရက်' : /week/i.test(duration[2]) ? 'ပတ်' : /year/i.test(duration[2]) ? 'နှစ်' : 'လ'}`
     : '';
   const typeMm = p.productType === 'slot'
-    ? 'အီးမေးလ်မှတစ်ဆင့် Slot ဖိတ်ကြားပေးမည့် ပက်ကေ့ချ်'
+    ? 'အီးမေးလ်မှတစ်ဆင့် မိသားစု/Slot အဖွဲ့ဝင်အဖြစ် ဖိတ်ကြားပေးမည့် ပက်ကေ့ချ်'
     : p.productType === 'upgrade_account'
       ? 'သင့်အကောင့်ကို အဆင့်မြှင့်ပေးမည့် ပက်ကေ့ချ်'
       : 'ဝယ်ယူပြီးနောက် အကောင့်အချက်အလက်ကို အလိုအလျောက်ရရှိမည့် ပက်ကေ့ချ်';
@@ -263,25 +264,74 @@ function translatePackageMm(p, delivery) {
     : p.productType === 'slot'
       ? 'ဝယ်ယူရန် သင့်အီးမေးလ်လိုအပ်ပြီး ဖိတ်စာကို အီးမေးလ်သို့ ပို့ပေးပါမည်။'
       : 'သင့်အကောင့်အချက်အလက်ပေးရန်လိုအပ်ပြီး အက်ဒမင်က အဆင့်မြှင့်ပြီးပါက အတည်ပြုပေးပါမည်။';
-  const warrantyMm = /warranty/i.test(rawDescription + ' ' + rawName)
-    ? 'ဖော်ပြထားသော ကာလအတွင်း အာမခံဝန်ဆောင်မှု ပါဝင်ပါသည်။'
-    : 'ဝယ်ယူမီ ပက်ကေ့ချ်စည်းမျဉ်းများကို စစ်ဆေးပါ။';
-  const featureBits = [];
-  if (/unlimited/i.test(rawDescription + ' ' + rawName)) featureBits.push('Fair-use မူဝါဒအရ အကန့်အသတ်မဲ့ အသုံးပြုနိုင်သည်');
-  const gb = (rawDescription + ' ' + rawName).match(/([\d.]+)\s*(GB|TB)/i);
-  if (gb) featureBits.push(`ဒေတာပမာဏ ${gb[1]} ${gb[2].toUpperCase()} ပါဝင်သည်`);
-  const devices = (rawDescription + ' ' + rawName).match(/(?:up to\s*)?(\d+)\s*devices?/i);
-  if (devices) featureBits.push(`စက် ${devices[1]} လုံးအထိ အသုံးပြုနိုင်သည်`);
-  const summary = [
-    durationMm ? `အသုံးပြုနိုင်သည့်ကာလ ${durationMm} ဖြစ်သည်။` : '',
-    typeMm + ' ဖြစ်သည်။',
-    ...featureBits.map(x => `${x}။`),
-    deliveryMm,
-    warrantyMm
-  ].filter(Boolean).join('\n');
+  const info = [];
+  const warnings = [];
+  const activation = [];
+  const warranty = [];
+
+  if (durationMm) info.push(`• အသုံးပြုနိုင်သည့်ကာလ — ${durationMm}`);
+  info.push(`• ${typeMm} ဖြစ်သည်။`);
+  info.push(`• ${deliveryMm}`);
+  if (/unlimited/i.test(source)) info.push('• Fair-use မူဝါဒအရ အကန့်အသတ်မဲ့ အသုံးပြုနိုင်သည်။');
+  const storage = source.match(/([\d,.]+)\s*(GB|TB)\b/i);
+  if (storage) info.push(`• Storage/ဒေတာပမာဏ ${storage[1]} ${storage[2].toUpperCase()} ပါဝင်သည်။`);
+  const devices = source.match(/(?:up to\s*)?(\d+)\s*devices?/i);
+  if (devices) info.push(`• စက် ${devices[1]} လုံးအထိ အသုံးပြုနိုင်သည်။`);
+  const members = source.match(/(?:up to\s*)?(\d+)\s*(?:people|members|accounts)/i);
+  if (members) info.push(`• မိသားစုအဖွဲ့ဝင်/အကောင့် ${members[1]} ခုအထိ မျှဝေအသုံးပြုနိုင်သည်။`);
+  const credits = source.match(/([\d,]+)\s*(?:AI|Flow)?\s*(?:credits|points)/i);
+  if (credits) info.push(`• AI/Flow Credit ${credits[1]} ပါဝင်သည်။`);
+  if (/YouTube Premium/i.test(source)) info.push('• YouTube Premium အကျိုးခံစားခွင့် ပါဝင်သည်။');
+  if (/Google (?:Drive|Photos|One)|Gmail/i.test(source)) info.push('• Google Drive၊ Google Photos၊ Gmail သို့မဟုတ် Google One ဝန်ဆောင်မှုနှင့် တွဲဖက်အသုံးပြုနိုင်သည်။');
+  if (/Antigravity/i.test(source)) info.push('• Google Antigravity ကို ပံ့ပိုးသည်။');
+  if (/official (?:activation )?link|redeem link/i.test(source)) info.push('• Google ၏ တရားဝင် activation link ဖြင့် ဖွင့်သုံးရမည်။');
+
+  if (/send Email to (?:the )?Bot|requires? (?:your )?email|provide (?:the )?email/i.test(source)) activation.push('• မှာယူပြီးနောက် အသုံးပြုမည့် Email ကို မှန်ကန်စွာပေးရန်လိုသည်။');
+  if (/Email\s*\|\s*Pass(?:word)?\s*\|\s*2FA|Mail\s*\|\s*Pass(?:word)?\s*\|\s*2FA/i.test(source)) activation.push('• အဆင့်မြှင့်ရန် Email | Password | 2FA အချက်အလက်ကို အက်ဒမင်ထံ ပေးရမည်။');
+  if (/payment card|credit card|e-wallet|valid card/i.test(source)) activation.push('• Activation အတည်ပြုရန် ဘဏ်ကတ် သို့မဟုတ် e-wallet လိုအပ်နိုင်သည်။');
+  if (/check Email to confirm|confirm joining/i.test(source)) activation.push('• အော်ဒါအတည်ပြုပြီးနောက် Email ထဲရှိ ဖိတ်ကြားချက်ကို လက်ခံအတည်ပြုရမည်။');
+  if (/change the password/i.test(source)) activation.push('• အဆင့်မြှင့်ပြီးသည်နှင့် လုံခြုံရေးအတွက် Password ပြောင်းပါ။');
+  if (/cancel auto-renewal/i.test(source)) activation.push('• မလိုအပ်သော အပိုငွေမဖြတ်စေရန် activation ပြီးနောက် auto-renewal ကို ပိတ်နိုင်သည်။');
+
+  if (/do not leave the family group|leaving the group\s*=\s*no warranty/i.test(source)) warnings.push('• Family Group မှ မိမိဘာသာ မထွက်ရပါ။ ထွက်သွားပါက အာမခံပျက်ပါမည်။');
+  const readdHours = source.match(/changing Email and re-adding[\s\S]{0,80}?within\s*(\d+)H/i);
+  if (readdHours) warnings.push(`• ဝယ်ယူပြီး ${readdHours[1]} နာရီအတွင်း Family Group မဝင်နိုင်သေးပါကသာ Email ပြောင်း၍ ပြန်ဖိတ်ပေးနိုင်သည်။`);
+  if (/Each member can only change Email once/i.test(source)) warnings.push('• ဖိတ်ကြားမှုကန့်သတ်ချက်ကြောင့် အဖွဲ့ဝင်တစ်ဦးလျှင် Email တစ်ကြိမ်သာ ပြောင်းနိုင်သည်။');
+  const supportFee = source.match(/After\s*(\d+)H[\s\S]{0,80}?extra\s*(\d+)%/i);
+  if (supportFee) warnings.push(`• ${supportFee[1]} နာရီကျော်ပြီးနောက် အကူအညီလိုပါက အော်ဒါတန်ဖိုး၏ ${supportFee[2]}% ထပ်မံပေးရမည်။`);
+  if (/each link can only be activated once/i.test(source)) warnings.push('• Activation link တစ်ခုကို တစ်ကြိမ်သာ အသုံးပြုနိုင်ပြီး အသုံးပြုသည့် Gmail နှင့် အမြဲချိတ်ဆက်သွားမည်။');
+  if (/not eligible|eligib/i.test(source) && /Gmail/i.test(source)) warnings.push('• Gmail အကောင့်အချို့သည် offer ရယူခွင့်မရှိနိုင်သောကြောင့် မဝယ်ယူမီ စစ်ဆေးပါ။');
+  if (/no refund|not eligible for (?:exchange|refund)|no refunds/i.test(source)) warnings.push('• ဖော်ပြထားသော စည်းမျဉ်းများနှင့်မကိုက်ညီပါက ငွေပြန်အမ်းခြင်း သို့မဟုတ် လဲလှယ်ခြင်း မပြုနိုင်ပါ။');
+  if (/do not use (?:a )?new Gmail|long-standing Gmail|old Gmail/i.test(source)) warnings.push('• Checkpoint မဖြစ်စေရန် အသုံးပြုထားကြာပြီဖြစ်သော Gmail ကို သုံးရန် အကြံပြုသည်။');
+  if (/incorrectly|customer-caused errors|shop is not responsible|not responsible/i.test(source)) warnings.push('• Customer ဘက်မှ အချက်အလက်မှားခြင်း သို့မဟုတ် စည်းမျဉ်းမလိုက်နာခြင်းကြောင့် ဖြစ်သည့်ပြဿနာများကို ဆိုင်ဘက်မှ တာဝန်မယူပါ။');
+
+  const warrantyText = source.match(/(?:warranty(?:\s*&\s*terms)?\s*[:|-]?\s*|)(\d+)\s*(hour|hours|h|day|days|month|months|year|years)\s*(?:link\s*)?warranty/i);
+  if (/full warranty/i.test(rawName)) warranty.push('• ဝယ်ယူထားသည့် ပက်ကေ့ချ်ကာလအတွင်း အာမခံအပြည့် ပါဝင်သည်။');
+  else if (/\bno warranty\b/i.test(rawName)) warranty.push('• ဤပက်ကေ့ချ်တွင် အာမခံမပါဝင်ပါ။');
+  else if (warrantyText) {
+    const unit = /^(?:hour|hours|h)$/i.test(warrantyText[2]) ? 'နာရီ' : /day/i.test(warrantyText[2]) ? 'ရက်' : /year/i.test(warrantyText[2]) ? 'နှစ်' : 'လ';
+    warranty.push(`• အာမခံကာလ — ${warrantyText[1]} ${unit}`);
+  } else if (/warranty/i.test(source)) warranty.push('• API တွင် ဖော်ပြထားသော အာမခံစည်းမျဉ်းအတိုင်း ဝန်ဆောင်မှုပေးသည်။');
+  else warranty.push('• အာမခံမဖော်ပြထားသောကြောင့် မဝယ်ယူမီ အက်ဒမင်ထံ အတည်ပြုပါ။');
+  if (/link warranty/i.test(source)) warranty.push('• Activation link ကို လက်ခံရရှိချိန်တွင် အသုံးမပြုရသေးကြောင်း ဆိုင်က အာမခံသည်။');
+
+  const sections = [
+    `📦 ပက်ကေ့ချ်အချက်အလက်\n${info.join('\n')}`,
+    activation.length ? `🔑 အသုံးပြုရန်/Activation လုပ်ရန်\n${activation.join('\n')}` : '',
+    warnings.length ? `⚠️ သတိပြုရန်\n${warnings.join('\n')}` : '',
+    `🛡️ အာမခံစည်းမျဉ်း\n${warranty.join('\n')}`
+  ].filter(Boolean);
+  let nameMm = rawName
+    .replace(/full warranty/ig, 'အာမခံအပြည့်')
+    .replace(/no warranty/ig, 'အာမခံမရှိ')
+    .replace(/24\s*h(?:our)?\s*warranty/ig, '၂၄ နာရီအာမခံ')
+    .replace(/(\d+)\s*months?\s*warranty/ig, '$1 လ အာမခံ')
+    .replace(/(\d+)\s*years?/ig, '$1 နှစ်')
+    .replace(/(\d+)\s*months?/ig, '$1 လ')
+    .replace(/(\d+)\s*days?/ig, '$1 ရက်');
   return {
-    nameMm: durationMm ? `${rawName.replace(duration[0], '').replace(/[-–—()]+/g, ' ').replace(/\s+/g, ' ').trim()} — ${durationMm}` : rawName,
-    descriptionMm: summary,
+    nameMm,
+    descriptionMm: sections.join('\n\n'),
     deliveryLabelMm: delivery.isInstant ? 'ချက်ချင်းပို့ပေးမည်' : p.productType === 'slot' ? 'Slot ဖိတ်ကြားမှု' : 'အကောင့်အဆင့်မြှင့်မှု',
     deliveryHintMm: deliveryMm
   };

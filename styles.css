@@ -67,8 +67,8 @@ svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-lin
 .bnav a{height:var(--bn);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600;color:var(--t2)}
 .bnav svg{width:22px;height:22px}
 .bnav a.on{color:#fff}.bnav a.on svg{color:var(--pri2)}
-.bmid span{width:40px;height:40px;margin-top:-18px;display:grid;place-items:center;border-radius:10px;background:var(--pri);color:#fff;box-shadow:0 8px 20px rgba(47,107,255,.45);border:3px solid var(--bg0)}
-.bmid span svg{width:20px;height:20px}
+.bmid>span:first-child{width:40px;height:40px;margin-top:-18px;display:grid;place-items:center;border-radius:10px;background:var(--pri);color:#fff;box-shadow:0 8px 20px rgba(47,107,255,.45);border:3px solid var(--bg0)}
+.bmid>span:first-child svg{width:20px;height:20px}
 @media(min-width:768px){.bnav{display:none}body{padding-bottom:0}}
 
 /* ---------- Page ---------- */
@@ -444,7 +444,7 @@ body{--hh:68px}
 .pkg{border-radius:12px}.pkg.on{box-shadow:0 0 0 1px var(--pri),0 12px 30px rgba(91,124,255,.12)}
 .modal{background:rgba(2,5,12,.74)}.modalbox{box-shadow:0 30px 100px rgba(0,0,0,.55)}
 .foot{margin-top:76px;background:#090e1b;border-top-color:rgba(137,160,255,.12)}.fin{gap:32px}.foot h5{color:#95a3bd}.foot .fin>div>a{transition:color .15s ease,transform .15s ease}.foot .fin>div>a:hover{transform:translateX(3px)}.copyr{display:flex;justify-content:space-between;gap:16px;border-top-color:rgba(137,160,255,.1)}
-.bnav{background:rgba(7,11,22,.93);border-top-color:rgba(137,160,255,.13)}.bmid span{border-radius:12px;background:linear-gradient(135deg,#647fff,#4665e8)}
+.bnav{background:rgba(7,11,22,.93);border-top-color:rgba(137,160,255,.13)}.bmid>span:first-child{border-radius:12px;background:linear-gradient(135deg,#647fff,#4665e8)}
 .toast{border-radius:12px;background:#1a2744}
 @media(max-width:767px){.top .wordmark small{display:none}.top .wordmark{padding-left:8px}.copyr{flex-direction:column}.mhero{padding:14px 16px 0}.sec{margin-top:38px}.trust{grid-template-columns:1fr}.foot{margin-top:56px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
