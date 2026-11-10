@@ -17,7 +17,7 @@
 <!-- HEADER (Banana placement: logo left, nav, actions right, hamburger on mobile) -->
 <header class="top">
   <a class="brand" href="#/" aria-label="Exabyte Digital Store home">
-    <svg class="mark" viewBox="0 0 36 36" aria-hidden="true"><g fill="currentColor"><rect x="2" y="3" width="7" height="30"/><rect x="12" y="3" width="22" height="7"/><rect x="12" y="14.5" width="17" height="7"/><rect x="12" y="26" width="22" height="7"/></g></svg>
+    <img class="mark brand-symbol" src="exabyte-symbol.jpg" alt="" aria-hidden="true">
     <span class="wordmark"><b>EXABYTE</b><small>DIGITAL STORE</small></span>
   </a>
   <nav class="nav" aria-label="Primary">
@@ -32,7 +32,7 @@
     <a href="#/api" data-r="api">API</a>
   </nav>
   <div class="acts">
-    <div class="lang-switch" role="group" aria-label="Language"><button type="button" data-lang="en" class="on">EN</button><button type="button" data-lang="mm">မြန်မာ</button></div>
+    <div class="lang-switch" role="group" aria-label="Language"><span class="switch-knob" aria-hidden="true"></span><button type="button" data-lang="en" class="on" aria-pressed="true">EN</button><button type="button" data-lang="mm" aria-pressed="false">MM</button></div>
     <button class="authbtn" id="authBtn" type="button" aria-label="Sign in">Sign in</button>
     <a class="wallet" href="#/topup" aria-label="Wallet balance. Top up">
       <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/></svg>
@@ -58,8 +58,8 @@
 <footer class="foot">
   <div class="fin">
     <div class="fbrand">
-      <a class="brand" href="#/"><svg class="mark" viewBox="0 0 36 36" aria-hidden="true"><g fill="currentColor"><rect x="2" y="3" width="7" height="30"/><rect x="12" y="3" width="22" height="7"/><rect x="12" y="14.5" width="17" height="7"/><rect x="12" y="26" width="22" height="7"/></g></svg><span class="wordmark"><b>EXABYTE</b><small>DIGITAL STORE</small></span></a>
-      <p>Premium apps, AI tools and VPN access. Top up once, buy anytime. Delivered in minutes.</p>
+      <a class="brand" href="#/"><img class="mark brand-symbol" src="exabyte-symbol.jpg" alt="" aria-hidden="true"><span class="wordmark"><b>EXABYTE</b><small>DIGITAL STORE</small></span></a>
+      <p data-i18n="footerIntro">Premium apps, AI tools and VPN access. Top up once, buy anytime. Delivered in minutes.</p>
     </div>
     <div><h5 data-i18n="store">Store</h5><a href="#/products" data-i18n="allProducts">All products</a><a href="#/p/outline-vpn">Outline VPN</a><a href="#/products?g=ai" data-i18n="aiTools">AI tools</a><a href="#/products?g=stream" data-i18n="streaming">Streaming</a></div>
     <div><h5 data-i18n="account">Account</h5><a href="#/topup" data-i18n="topup">Top up</a><a href="#/orders" data-i18n="history">History</a><a href="#/api" data-i18n="resellerApi">Reseller API</a><a href="#/" data-i18n="telegramSupport">Telegram support</a></div>

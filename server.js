@@ -122,7 +122,7 @@ const CATEGORY_META = {
   chatgpt:              { title: 'ChatGPT', group: 'ai', color: '#10a37f', slug: null, svg: 'openai', hot: true },
   codex:                { title: 'API CodeX', group: 'ai', color: '#202123', slug: null, svg: 'openai', hot: true },
   claude:               { title: 'API Claude', group: 'ai', color: '#d97757', slug: 'anthropic', hot: true },
-  deepseek:             { title: 'Deepseek', group: 'ai', color: '#4d6bfe', slug: null },
+  deepseek:             { title: 'Deepseek', group: 'ai', color: '#4d6bfe', slug: 'deepseek' },
   grok:                 { title: 'Grok', group: 'ai', color: '#111827', slug: 'x' },
   antigravity:          { title: 'Google AI Ultra (VEO3)', group: 'ai', color: '#4285f4', slug: 'google', hot: true },
   perplexity:           { title: 'Perplexity', group: 'ai', color: '#20808d', slug: 'perplexity' },
@@ -135,13 +135,13 @@ const CATEGORY_META = {
   zed:                  { title: 'Zed Editor', group: 'work', color: '#084ccf', slug: 'zedindustries' },
   genspark:             { title: 'GenSpark', group: 'ai', color: '#4f46e5', slug: null },
   github:               { title: 'GitHub Copilot', group: 'work', color: '#24292f', slug: 'github' },
-  canva:                { title: 'Canva', group: 'design', color: '#7d2ae8', slug: null, hot: true },
-  capcut:               { title: 'CapCut', group: 'design', color: '#111111', slug: null, hot: true },
-  adobe:                { title: 'Adobe Creative Cloud', group: 'design', color: '#e1251b', slug: null, hot: true },
+  canva:                { title: 'Canva', group: 'design', color: '#7d2ae8', slug: 'canva', hot: true },
+  capcut:               { title: 'CapCut', group: 'design', color: '#111111', slug: 'capcut', hot: true },
+  adobe:                { title: 'Adobe Creative Cloud', group: 'design', color: '#e1251b', slug: 'adobe', hot: true },
   figma:                { title: 'Figma', group: 'design', color: '#f24e1e', slug: 'figma' },
   autodesk:             { title: 'AutoDesk', group: 'design', color: '#0696d7', slug: 'autodesk' },
-  alight_motion:        { title: 'Alight Motion', group: 'design', color: '#0f3b3a', slug: null },
-  heygen:               { title: 'HeyGen', group: 'ai', color: '#6366f1', slug: null },
+  alight_motion:        { title: 'Alight Motion', group: 'design', color: '#0f3b3a', slug: 'alightmotion' },
+  heygen:               { title: 'HeyGen', group: 'ai', color: '#6366f1', slug: 'heygen' },
   higgfield:            { title: 'Higgsfield', group: 'ai', color: '#a3e635', slug: null, darkText: true },
   kling:                { title: 'Kling AI', group: 'ai', color: '#0284c7', slug: null },
   meitu:                { title: 'Meitu', group: 'design', color: '#ff3355', slug: null },
@@ -149,8 +149,8 @@ const CATEGORY_META = {
   xingtu:               { title: 'Xingtu', group: 'design', color: '#65a30d', slug: null },
   beautycam:            { title: 'BeautyCam', group: 'design', color: '#ec4899', slug: null },
   gmail:                { title: 'Gmail', group: 'work', color: '#ea4335', slug: 'gmail' },
-  microsoft_office_365: { title: 'Microsoft Office 365', group: 'work', color: '#d83b01', slug: null },
-  windows:              { title: 'Windows & Office Keys', group: 'work', color: '#0078d4', slug: null },
+  microsoft_office_365: { title: 'Microsoft Office 365', group: 'work', color: '#d83b01', slug: 'microsoft365' },
+  windows:              { title: 'Windows & Office Keys', group: 'work', color: '#0078d4', slug: 'windows11' },
   grammarly:            { title: 'Grammarly', group: 'work', color: '#15c39a', slug: 'grammarly' },
   ilovepdf:             { title: 'iLovePDF', group: 'work', color: '#e5322d', slug: 'ilovepdf' },
   proton:               { title: 'Proton VPN', group: 'vpn', color: '#6d4aff', slug: 'proton' },
@@ -168,10 +168,10 @@ const CATEGORY_META = {
   quizlet:              { title: 'Quizlet Plus', group: 'learn', color: '#4255ff', slug: 'quizlet' },
   scribd:               { title: 'Scribd', group: 'learn', color: '#1e7b85', slug: 'scribd' },
   nordvpn:              { title: 'NordVPN', group: 'vpn', color: '#4687ff', slug: 'nordvpn', hot: true },
-  hma_vpn:              { title: 'HMA VPN', group: 'vpn', color: '#ffd400', slug: null, darkText: true },
+  hma_vpn:              { title: 'HMA VPN', group: 'vpn', color: '#ffd400', slug: 'hidemyass', darkText: true },
   express:              { title: 'ExpressVPN', group: 'vpn', color: '#da3940', slug: 'expressvpn', hot: true },
   surfshark:            { title: 'Surfshark VPN', group: 'vpn', color: '#178a9e', slug: 'surfshark' },
-  hotspot_shield:       { title: 'Hotspot Shield', group: 'vpn', color: '#1f8ef1', slug: null },
+  hotspot_shield:       { title: 'Hotspot Shield', group: 'vpn', color: '#1f8ef1', slug: 'hotspotshield' },
   crunchyroll:          { title: 'Crunchyroll', group: 'stream', color: '#f47521', slug: 'crunchyroll' }
 };
 
@@ -246,10 +246,119 @@ function classifyDelivery(p) {
   };
 }
 
+function translatePackageNameMm(name) {
+  return String(name || 'Digital package')
+    .replace(/full warranty/ig, 'အာမခံအပြည့်')
+    .replace(/no warranty/ig, 'အာမခံမပါ')
+    .replace(/(\d+)\s*-?\s*hours?\s*warranty/ig, '$1 နာရီ အာမခံ')
+    .replace(/(\d+)\s*h\s*warranty/ig, '$1 နာရီ အာမခံ')
+    .replace(/(\d+)\s*days?\s*warranty/ig, '$1 ရက် အာမခံ')
+    .replace(/(\d+)\s*months?\s*warranty/ig, '$1 လ အာမခံ')
+    .replace(/(\d+)\s*years?\s*warranty/ig, '$1 နှစ် အာမခံ')
+    .replace(/(\d+)\s*years?/ig, '$1 နှစ်')
+    .replace(/(\d+)\s*months?/ig, '$1 လ')
+    .replace(/(\d+)\s*days?/ig, '$1 ရက်');
+}
+
+// Translate the seller's own description line-by-line. Numbers, product names,
+// links and policy limits stay attached to their original API sentence instead
+// of being replaced by a generic storefront summary.
+function translateSellerLineMm(input) {
+  const original = String(input || '').trim();
+  if (!original) return '';
+  if (/^[━─═_\-\s]+$/.test(original)) return original;
+  if (/^https?:\/\//i.test(original) || /^🔗\s*https?:\/\//i.test(original)) return original;
+
+  let text = original;
+  const rules = [
+    [/PRODUCT INFORMATION|PACKAGE INFORMATION|INFORMATION/gi, 'ပက်ကေ့ချ်အချက်အလက်'],
+    [/IMPORTANT NOTES?|NOTES?/gi, 'အရေးကြီးမှတ်ချက်'],
+    [/WARRANTY\s*&\s*TERMS|WARRANTY POLICY/gi, 'အာမခံစည်းမျဉ်း'],
+    [/FULL WARRANTY/gi, 'အာမခံအပြည့်'],
+    [/NO WARRANTY/gi, 'အာမခံမပါ'],
+    [/WARRANTY/gi, 'အာမခံ'],
+    [/ACTIVATION GUIDE|ACTIVATION PROCESS/gi, 'အသုံးပြုရန် လုပ်ဆောင်ပုံ'],
+    [/UPGRADE PROCESS|UPGRADE PROCEDURE|\bPROCESS\b/gi, 'အဆင့်မြှင့်တင်ပုံ'],
+    [/BENEFITS|HIGHLIGHTED BENEFITS/gi, 'ရရှိမည့်အကျိုးကျေးဇူးများ'],
+    [/SPECIAL/gi, 'အထူးအစီအစဉ်'],
+    [/Duration:\s*(\d+)\s*months?/gi, 'အသုံးပြုနိုင်သည့်ကာလ - $1 လ'],
+    [/Usage period:\s*(\d+)[- ]month(?:s)?(?: trial)?/gi, 'အသုံးပြုနိုင်သည့်ကာလ - $1 လ'],
+    [/valid for\s*(\d+)(?:-(\d+))?\s*days?/gi, (_, a, b) => `အသုံးပြုနိုင်သည့်ကာလ ${a}${b ? ` မှ ${b}` : ''} ရက် ဖြစ်သည်`],
+    [/(\d+)[- ]day package warranty/gi, '$1 ရက် အာမခံပါသည်'],
+    [/(\d+)[- ]day warranty/gi, '$1 ရက် အာမခံပါသည်'],
+    [/(\d+)[- ]hour warranty/gi, '$1 နာရီ အာမခံပါသည်'],
+    [/(\d+)[- ]month warranty/gi, '$1 လ အာမခံပါသည်'],
+    [/(\d+)\s*months?\s*warranty/gi, '$1 လ အာမခံပါသည်'],
+    [/Warranty:\s*(\d+)\s*months?/gi, 'အာမခံကာလ - $1 လ'],
+    [/Account format:\s*/gi, 'အကောင့်ပုံစံ - '],
+    [/Format:\s*/gi, 'ပေးပို့မည့်ပုံစံ - '],
+    [/Customer provides:\s*/gi, 'ဝယ်သူပေးရမည့်အချက်အလက် - '],
+    [/After ordering, send Email to the Bot for the system to automatically upgrade\.?/gi, 'အော်ဒါတင်ပြီးနောက် စနစ်မှ အလိုအလျောက်အဆင့်မြှင့်ပေးရန် Email ကို Bot သို့ ပို့ပါ။'],
+    [/Order confirmed\s*→\s*check Email to confirm joining the Family\.?/gi, 'အော်ဒါအတည်ပြုပြီးပါက Family ဝင်ရောက်မှုကို အတည်ပြုရန် Email စစ်ပါ။'],
+    [/Processing time is only about\s*(\d+)\s*seconds?\.?/gi, 'လုပ်ဆောင်ချိန် $1 စက္ကန့်ခန့်သာ ကြာပါသည်။'],
+    [/Done super fast within\s*(\d+)\s*seconds?\.?/gi, '$1 စက္ကန့်အတွင်း လုပ်ဆောင်ပေးပါသည်။'],
+    [/(\d+)\s*slots? to join Google AI Family\.?/gi, 'Google AI Family သို့ ဝင်ရောက်ရန် Slot $1 ခု ရရှိပါမည်။'],
+    [/Fixed Farm account, stable usage\.?/gi, 'တည်ငြိမ်စွာအသုံးပြုနိုင်သည့် Fixed Farm အကောင့် ဖြစ်သည်။'],
+    [/GOOGLE AI FAMILY\s*[–-]\s*(\d+) SLOT\s*\|\s*FIXED FARM/gi, 'GOOGLE AI FAMILY – SLOT $1 ခု | တည်ငြိမ်သော FARM'],
+    [/Do not leave the family group on your own\. Leaving the group\s*=\s*အာမခံမပါ\.?/gi, 'Family Group မှ မိမိဘာသာ မထွက်ပါနှင့်။ ထွက်ပါက အာမခံပျက်ပါမည်။'],
+    [/The shop only supports changing Email and re-adding if not joined within\s*(\d+)H after purchase to avoid Limit\/Dead Family errors\.?/gi, 'ဝယ်ယူပြီး $1 နာရီအတွင်း Family မဝင်ရသေးပါက Limit/Dead Family ပြဿနာအတွက် Email ပြောင်းပြီး ပြန်ထည့်ပေးခြင်းကိုသာ ဆိုင်မှ ကူညီပေးပါမည်။'],
+    [/Each member can only change Email once to limit invitation restrictions\.?/gi, 'ဖိတ်ခေါ်မှုကန့်သတ်ချက် မဖြစ်စေရန် member တစ်ဦးလျှင် Email တစ်ကြိမ်သာ ပြောင်းနိုင်ပါသည်။'],
+    [/After\s*(\d+)H, if support is needed\s*→\s*extra\s*(\d+)% of (?:the )?order value\.?/gi, '$1 နာရီကျော်ပြီးနောက် အကူအညီလိုပါက အော်ဒါတန်ဖိုး၏ $2% ထပ်မံပေးရပါမည်။'],
+    [/Account does not support email or password change\.?/gi, 'Email သို့မဟုတ် Password ပြောင်းခြင်း မပြုလုပ်နိုင်ပါ။'],
+    [/Supports login on\s*(\d+)[–-](\d+)\s*devices\.?/gi, 'စက် $1 လုံးမှ $2 လုံးအထိ ဝင်ရောက်အသုံးပြုနိုင်ပါသည်။'],
+    [/Login limited to\s*(\d+)[–-](\d+)\s*devices,? multiple device logins restricted\.?/gi, 'စက် $1 လုံးမှ $2 လုံးအထိသာ အသုံးပြုရန်နှင့် စက်များစွာဖြင့် ဝင်ရောက်ခြင်းကို ကန့်သတ်ထားပါသည်။'],
+    [/Can receive up to\s*([\d,]+)\s*AI Credits?/gi, 'AI Credit $1 အထိ ရနိုင်ပါသည်'],
+    [/Random AI credits?\.?/gi, 'AI Credit ပမာဏကို ကျပန်းရရှိပါမည်။'],
+    [/Share with up to\s*(\d+)\s*people/gi, 'လူ $1 ဦးအထိ မျှဝေသုံးနိုင်ပါသည်'],
+    [/Can add up to\s*(\d+)\s*members?/gi, 'Member $1 ဦးအထိ ထည့်နိုင်ပါသည်'],
+    [/No credit card (?:or payment method )?required\.?/gi, 'Credit Card သို့မဟုတ် ငွေပေးချေနည်း မလိုအပ်ပါ။'],
+    [/Requires? a payment card or e-wallet for verification\.?/gi, 'အတည်ပြုရန် Payment Card သို့မဟုတ် e-wallet လိုအပ်ပါသည်။'],
+    [/After successful upgrade, check the package and change the password\.?/gi, 'အဆင့်မြှင့်တင်ပြီးပါက ပက်ကေ့ချ်ကို စစ်ဆေးပြီး Password ပြောင်းပါ။'],
+    [/Admin logs in, (?:performs|completes) (?:the )?upgrade and payment\.?/gi, 'Admin က အကောင့်ဝင်ပြီး Upgrade နှင့် ငွေပေးချေမှုကို ဆောင်ရွက်ပေးပါမည်။'],
+    [/Please check the account immediately after receiving it\.?/gi, 'အကောင့်ရရှိသည်နှင့် ချက်ချင်းစစ်ဆေးပါ။'],
+    [/Please read the description and warranty conditions carefully before purchasing!?/gi, 'မဝယ်ယူမီ ဖော်ပြချက်နှင့် အာမခံစည်းမျဉ်းများကို သေချာဖတ်ပါ။'],
+    [/no warranty for logging in too frequently/gi, 'မကြာခဏဝင်ရောက်ခြင်းကြောင့် ဖြစ်သောပြဿနာများအတွက် အာမခံမပါ'],
+    [/No warranty in any case of excessive login, regardless of usage purpose\.?/gi, 'မည်သည့်ရည်ရွယ်ချက်ဖြင့်ဖြစ်စေ အလွန်အကျွံဝင်ရောက်အသုံးပြုခြင်းကြောင့် ဖြစ်သောပြဿနာများကို အာမခံမပေးပါ။'],
+    [/Email \| Password/gi, 'Email | Password'],
+    [/Email \| Pass/gi, 'Email | Password'],
+    [/Mail \| Pass/gi, 'Email | Password']
+  ];
+  for (const [pattern, replacement] of rules) text = text.replace(pattern, replacement);
+
+  const words = [
+    [/Direct upgrade/gi, 'တိုက်ရိုက် Upgrade'], [/official Gmail account/gi, 'မူရင်း Gmail အကောင့်'],
+    [/activation link/gi, 'အသုံးပြုရန် link'], [/storage/gi, 'သိုလှောင်မှုပမာဏ'],
+    [/according to (?:the )?shop(?:'s|’s)? conditions/gi, 'ဆိုင်၏စည်းမျဉ်းများအတိုင်း'],
+    [/recommended/gi, 'အကြံပြုထားသည်'], [/do not use/gi, 'မသုံးပါနှင့်'],
+    [/customer/gi, 'ဝယ်သူ'], [/account/gi, 'အကောင့်'], [/package/gi, 'ပက်ကေ့ချ်'],
+    [/month/gi, 'လ'], [/days?/gi, 'ရက်'], [/hours?/gi, 'နာရီ']
+  ];
+  for (const [pattern, replacement] of words) text = text.replace(pattern, replacement);
+  return text;
+}
+
 function translatePackageMm(p, delivery) {
   const rawName = String(p.name || 'Digital package');
   const rawDescription = String(p.description || '').trim();
   const source = `${rawName}\n${rawDescription}`;
+  if (rawDescription) {
+    const translatedSource = rawDescription
+      .split(/\r?\n/)
+      .map(line => translateSellerLineMm(line))
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n');
+    const liveDeliveryMm = delivery.isInstant
+      ? 'ရောင်းသူ API တွင် လက်ကျန်ရှိပါက ငွေပေးချေပြီးနောက် အကောင့်အချက်အလက်ကို ချက်ချင်းပို့ပေးပါမည်။'
+      : p.productType === 'slot'
+        ? 'ဝယ်သူ၏ Email လိုအပ်ပြီး ရောင်းသူက invitation ပို့ပေးမည့် Slot ပက်ကေ့ချ် ဖြစ်သည်။'
+        : 'ဝယ်သူ၏အကောင့်အချက်အလက်ကို အသုံးပြုပြီး ရောင်းသူက အဆင့်မြှင့်တင်ပေးမည့် ပက်ကေ့ချ် ဖြစ်သည်။';
+    return {
+      nameMm: translatePackageNameMm(rawName),
+      descriptionMm: translatedSource,
+      deliveryLabelMm: delivery.isInstant ? 'ချက်ချင်းပို့ပေးမည်' : p.productType === 'slot' ? 'Slot ဖိတ်ခေါ်မှု' : 'အကောင့်အဆင့်မြှင့်ခြင်း',
+      deliveryHintMm: liveDeliveryMm
+    };
+  }
   const duration = source.match(/(\d+)\s*(hour|hours|h|day|days|month|months|year|years|week|weeks)/i);
   const durationMm = duration
     ? `${duration[1]} ${/^(?:hour|hours|h)$/i.test(duration[2]) ? 'နာရီ' : /day/i.test(duration[2]) ? 'ရက်' : /week/i.test(duration[2]) ? 'ပတ်' : /year/i.test(duration[2]) ? 'နှစ်' : 'လ'}`
@@ -456,7 +565,8 @@ async function provisionOutlineClient(pkg, orderCode) {
 
 let memoryCatalog = null;
 let lastFetchMs = 0;
-const CACHE_TTL_MS = 60 * 1000; // 60s cache to respect Canboso rate limits (30 req/60s)
+let catalogFetchPromise = null;
+const CACHE_TTL_MS = 10 * 1000; // One shared seller refresh every 10 seconds (well below 30 req/60s).
 
 // Seed the in-memory catalog from the checked-in cache so startup is instant.
 try {
@@ -467,24 +577,32 @@ try {
 
 async function getRawCatalog(force = false) {
   const now = Date.now();
+  if (!BUYER_KEY && memoryCatalog) {
+    return { catalog: memoryCatalog, source: 'snapshot', fetchedAt: null };
+  }
   if (!force && memoryCatalog && (now - lastFetchMs < CACHE_TTL_MS)) {
     return { catalog: memoryCatalog, source: 'cache', fetchedAt: new Date(lastFetchMs).toISOString() };
   }
-  try {
-    const res = await canbosoRequest('GET', '/api/v2/telegram-buyer/products');
-    if (res.status === 200 && res.data && res.data.success && Array.isArray(res.data.products)) {
-      memoryCatalog = res.data;
-      lastFetchMs = now;
-      fs.writeFileSync(CACHE_FILE, JSON.stringify(res.data, null, 2), 'utf8');
-      return { catalog: memoryCatalog, source: 'live', fetchedAt: new Date(lastFetchMs).toISOString() };
+  if (catalogFetchPromise) return catalogFetchPromise;
+  catalogFetchPromise = (async () => {
+    try {
+      const res = await canbosoRequest('GET', '/api/v2/telegram-buyer/products');
+      if (res.status === 200 && res.data && res.data.success && Array.isArray(res.data.products)) {
+        memoryCatalog = res.data;
+        lastFetchMs = Date.now();
+        fs.writeFileSync(CACHE_FILE, JSON.stringify(res.data, null, 2), 'utf8');
+        return { catalog: memoryCatalog, source: 'live', fetchedAt: new Date(lastFetchMs).toISOString() };
+      }
+    } catch (err) {
+      console.warn('Canboso live fetch warning, falling back to cached catalog:', err.message);
     }
-  } catch (err) {
-    console.warn('Canboso live fetch warning, falling back to cached catalog:', err.message);
-  }
-  if (memoryCatalog) {
-    return { catalog: memoryCatalog, source: 'cached_fallback', fetchedAt: lastFetchMs ? new Date(lastFetchMs).toISOString() : null };
-  }
-  throw new Error('Catalog unavailable');
+    if (memoryCatalog) {
+      return { catalog: memoryCatalog, source: 'cached_fallback', fetchedAt: lastFetchMs ? new Date(lastFetchMs).toISOString() : null };
+    }
+    throw new Error('Catalog unavailable');
+  })();
+  try { return await catalogFetchPromise; }
+  finally { catalogFetchPromise = null; }
 }
 
 function buildStructuredCatalog(rawProducts, metaInfo) {
@@ -554,7 +672,7 @@ function buildStructuredCatalog(rawProducts, metaInfo) {
     cat.hasInstant = cat.packages.some(x => x.isInstant && x.inStock);
     cat.hasManual = cat.packages.some(x => !x.isInstant);
     cat.anyInStock = cat.packages.some(x => x.inStock);
-    const coverPkg = cat.packages.find(x => x.image);
+    const coverPkg = cat.packages.find(x => x.image && /product-default-images/i.test(x.image));
     cat.coverImage = coverPkg ? coverPkg.image : null;
     categories.push(cat);
   }
@@ -1123,4 +1241,10 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Exabyte Digital Store server running at http://localhost:${PORT} (1 USD = ${RATE_MMK} Ks)`);
+  if (BUYER_KEY) {
+    getRawCatalog(true).catch(err => console.warn('Initial seller sync failed:', err.message));
+    setInterval(() => getRawCatalog(false).catch(err => console.warn('Seller sync failed:', err.message)), CACHE_TTL_MS);
+  } else {
+    console.warn('CANBOSO_API_KEY is not configured; serving the checked-in catalog snapshot.');
+  }
 });

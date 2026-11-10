@@ -37,7 +37,8 @@ const COPY = {
     history: 'History', purchaseHistory: 'Product Purchases', topupHistory: 'Top Up Requests', menu: 'Menu', allProducts: 'All Products', aiTools: 'AI Tools',
     topupWallet: 'Top Up Wallet', resellerApi: 'Reseller API', store: 'Store', account: 'Account', streaming: 'Streaming', telegramSupport: 'Telegram support',
     weAccept: 'We accept', bank: 'Bank', shop: 'Shop', categories: 'Categories', support: 'Support', quantity: 'Quantity', fulfillment: 'Fulfillment',
-    walletBalance: 'Wallet Balance', totalPayment: 'Total Payment', required: 'Required', optional: 'Optional', pending: 'Pending review', approved: 'Approved', rejected: 'Rejected'
+    walletBalance: 'Wallet Balance', totalPayment: 'Total Payment', required: 'Required', optional: 'Optional', pending: 'Pending review', approved: 'Approved', rejected: 'Rejected',
+    footerIntro: 'Premium apps, AI tools and VPN access. Top up once, buy anytime. Delivered in minutes.'
   },
   mm: {
     home: 'ပင်မ', products: 'ကုန်ပစ္စည်းများ', topup: 'ငွေဖြည့်ရန်', signIn: 'အကောင့်ဝင်ရန်', popular: 'လူကြိုက်များသော အမျိုးအစားများ', seeMore: 'နောက်ထပ်ကြည့်ရန်',
@@ -46,7 +47,8 @@ const COPY = {
     history: 'မှတ်တမ်း', purchaseHistory: 'ဝယ်ယူမှုမှတ်တမ်း', topupHistory: 'ငွေဖြည့်တောင်းဆိုမှုများ', menu: 'မီနူး', allProducts: 'ကုန်ပစ္စည်းအားလုံး', aiTools: 'AI ကိရိယာများ',
     topupWallet: 'Wallet ငွေဖြည့်ရန်', resellerApi: 'ပြန်လည်ရောင်းချသူ API', store: 'စတိုး', account: 'အကောင့်', streaming: 'ရုပ်သံနှင့်တေးဂီတ', telegramSupport: 'Telegram အကူအညီ',
     weAccept: 'လက်ခံသောငွေပေးချေမှု', bank: 'ဘဏ်', shop: 'စျေးဝယ်', categories: 'အမျိုးအစားများ', support: 'အကူအညီ', quantity: 'အရေအတွက်', fulfillment: 'ပို့ဆောင်ပုံ',
-    walletBalance: 'Wallet လက်ကျန်', totalPayment: 'စုစုပေါင်းပေးချေမှု', required: 'မဖြစ်မနေ', optional: 'မလိုအပ်လျှင် မထည့်နိုင်', pending: 'အတည်ပြုရန်စောင့်နေ', approved: 'အတည်ပြုပြီး', rejected: 'ပယ်ချပြီး'
+    walletBalance: 'Wallet လက်ကျန်', totalPayment: 'စုစုပေါင်းပေးချေမှု', required: 'မဖြစ်မနေ', optional: 'မလိုအပ်လျှင် မထည့်နိုင်', pending: 'အတည်ပြုရန်စောင့်နေ', approved: 'အတည်ပြုပြီး', rejected: 'ပယ်ချပြီး',
+    footerIntro: 'Premium app များ၊ AI tool များနှင့် VPN ဝန်ဆောင်မှုများကို Wallet ငွေဖြည့်ပြီး အချိန်မရွေး ဝယ်ယူနိုင်ပါသည်။'
   }
 };
 const t = key => (COPY[LANG] && COPY[LANG][key]) || COPY.en[key] || key;
@@ -79,6 +81,8 @@ const ICON = {
 };
 
 function iconImg(cat, colorHex) {
+  const artwork = cat.image || cat.coverImage;
+  if (artwork) return `<img class="package-art" src="${esc(artwork)}" alt="" loading="lazy" onerror="this.remove()">`;
   if (cat.svg === 'outline') return OUTLINE_SVG;
   if (cat.svg === 'openai') return OPENAI_SVG;
   if (cat.slug) {
@@ -88,6 +92,7 @@ function iconImg(cat, colorHex) {
   return '';
 }
 const logo = (cat, cls = '') => `<span class="logo ${cat.darkText ? 'dk' : ''} ${cls}" style="--c:${cat.color}">${iconImg(cat)}<b>${esc(cat.name[0])}</b></span>`;
+const packageLogo = (cat, pkg, cls = '') => logo({ ...cat, image: pkg && pkg.image && /product-default-images/i.test(pkg.image) ? pkg.image : null }, cls);
 const centerMark = cat => `<span class="big">${iconImg(cat, 'ffffff')}<b>${esc(cat.name[0])}</b></span>`;
 
 function setWalletUI(amount) {
@@ -116,7 +121,11 @@ function modal(html, cls = '') {
 
 function applyLanguageChrome() {
   document.documentElement.lang = LANG === 'mm' ? 'my' : 'en';
-  $$('[data-lang]').forEach(b => b.classList.toggle('on', b.dataset.lang === LANG));
+  $$('[data-lang]').forEach(b => {
+    const active = b.dataset.lang === LANG;
+    b.classList.toggle('on', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
   $$('[data-i18n]').forEach(el => { const value = t(el.dataset.i18n); if (value) el.textContent = value; });
   const authLabel = AUTH.user ? (AUTH.user.name || 'Account') : t('signIn');
   const authBtn = $('#authBtn'); if (authBtn) authBtn.textContent = authLabel;
@@ -313,7 +322,7 @@ function vProduct(id, params) {
       <div class="pkgs" id="pkgs">${cat.packages.map((k, i) => {
         const stkText = k.available === null ? '📦 ∞' : (k.available > 0 ? `📦 ${k.available}` : '❌ 0');
         return `<button class="pkg ${i === selIdx ? 'on' : ''} ${!k.inStock ? 'out' : ''}" data-pk="${i}">
-          ${logo(cat)}
+          ${packageLogo(cat, k)}
           <b>${esc(pkgName(k))}</b>
           <div class="meta">
             <span class="pill ${k.isInstant ? '' : 'man'}">${k.isInstant ? `⚡ ${t('instant')}` : (k.productType === 'slot' ? `📩 ${bi('Slot Invite','Slot ဖိတ်ကြားမှု')}` : `🛠️ ${bi('Upgrade','အဆင့်မြှင့်')}`)}</span>
@@ -370,7 +379,7 @@ function updateSelectedPackageDetails() {
     const promos = (k.promotions || []).map(pr => `🎁 Promotion: Buy ${pr.minQty} get ${pr.bonusQty ? `${pr.bonusQty} bonus` : `${pr.percent}% off`}`).join(' · ');
     pdEl.innerHTML = `
       <div class="pd-head">
-        ${logo(curCat)}
+        ${packageLogo(curCat, k)}
         <div>
           <h3>${esc(pkgName(k))}</h3>
           <span class="inst ${k.isInstant ? '' : 'man'}">${k.isInstant ? ICON.bolt : ICON.clock} ${esc(pkgDeliveryLabel(k))}</span>
@@ -694,7 +703,7 @@ function vApi() {
 const vNotFound = () => `<div class="ph"><h1>Page not found</h1><p><a class="lk" href="#/">Back to home</a></p></div>`;
 
 /* ---------------- Router ---------------- */
-async function render() {
+async function render(resetScroll = true) {
   const v = $('#view');
   if (!STATE.loaded) {
     v.innerHTML = `<div class="ph"><h1>Loading store catalog...</h1><p>Fetching live products and packages...</p></div>`;
@@ -717,7 +726,35 @@ async function render() {
     if (btn) btn.onclick = async () => { btn.textContent = 'Syncing...'; await loadBackendData(true); toast('Catalog synced from Canboso API'); render(); };
   }
   else v.innerHTML = vNotFound();
-  scrollTo(0, 0);
+  if (resetScroll !== false) scrollTo(0, 0);
+}
+
+let liveSyncing = false;
+async function syncLiveSellerData() {
+  if (liveSyncing || document.hidden || !STATE.loaded) return;
+  liveSyncing = true;
+  const y = scrollY;
+  const selectedProductId = curCat && curCat.packages[selIdx] ? curCat.packages[selIdx].productId : null;
+  try {
+    await loadBackendData(false);
+    const route = (location.hash.slice(1).split('?')[0] || '/').split('/').filter(Boolean);
+    if (route[0] === 'p' && route[1]) {
+      const freshCategory = STATE.categories.find(c => c.id === route[1]);
+      if (freshCategory) {
+        curCat = freshCategory;
+        const freshIndex = freshCategory.packages.findIndex(p => p.productId === selectedProductId);
+        if (freshIndex >= 0) selIdx = freshIndex;
+        updateSelectedPackageDetails();
+      }
+    } else if (!document.querySelector('input:focus,textarea:focus,select:focus')) {
+      await render(false);
+    }
+    scrollTo({ top: y, left: 0, behavior: 'instant' });
+  } catch (error) {
+    console.warn('Live seller sync failed:', error);
+  } finally {
+    liveSyncing = false;
+  }
 }
 
 /* ---------------- Global Events ---------------- */
@@ -727,10 +764,11 @@ burger.onclick = () => { menu.hidden = false; burger.setAttribute('aria-expanded
 $('#authBtn').onclick = showAuth;
 $('#mAuthBtn').onclick = showAuth;
 $$('[data-lang]').forEach(button => button.onclick = () => {
+  const y = scrollY;
   LANG = button.dataset.lang;
   localStorage.setItem('exa_lang', LANG);
   applyLanguageChrome();
-  render();
+  render(false).then(() => scrollTo({ top: y, left: 0, behavior: 'instant' }));
 });
 menu.addEventListener('click', e => { if (e.target.closest('[data-close]') || e.target.closest('a')) closeMenu(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMenu(); $$('.modal').forEach(m => m.remove()); } });
@@ -776,3 +814,4 @@ addEventListener('hashchange', render);
 applyLanguageChrome();
 loadIdentity();
 render();
+setInterval(syncLiveSellerData, 10_000);
