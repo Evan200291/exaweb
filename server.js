@@ -1071,7 +1071,15 @@ const server = http.createServer(async (req, res) => {
       const translated = await getFullMyanmarTranslation(productId);
       return sendJson(res, 200, { success: true, ...translated });
     } catch (error) {
-      return sendJson(res, 503, { success: false, message: error.message });
+      // Keep package details available even if the external translation
+      // endpoint is rate-limited or blocked by the deployment network.
+      const productId = String(u.searchParams.get('productId') || '').trim();
+      const rawProduct = [...OUTLINE_PACKAGES, ...((memoryCatalog && memoryCatalog.products) || [])]
+        .find(product => String(product.productId) === productId);
+      if (!rawProduct) return sendJson(res, 404, { success: false, message: 'Product was not found in the seller catalog' });
+      const fallback = translatePackageMm(rawProduct, classifyDelivery(rawProduct));
+      console.warn(`Myanmar translation fallback for ${productId}: ${error.message}`);
+      return sendJson(res, 200, { success: true, productId, descriptionMm: fallback.descriptionMm || rawProduct.description || '', cached: false, fallback: true });
     }
   }
 
