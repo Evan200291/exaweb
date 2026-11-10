@@ -12,6 +12,23 @@ const PORT = process.env.PORT || 60010;
 const API_BASE = 'https://canboso.com';
 const BUYER_KEY = process.env.CANBOSO_API_KEY || '';
 const RATE_MMK = Number(process.env.RATE_MMK || 5500); // $1 = 5,500 Ks (includes profit margin)
+const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN || '';
+const TG_BOT_USERNAME = process.env.TG_BOT_USERNAME || 'exabytewebot';
+const TG_ADMIN_IDS = String(process.env.TG_ADMIN_IDS || '').split(',').map(x => x.trim()).filter(Boolean);
+const TG_WEBHOOK_SECRET = process.env.TG_WEBHOOK_SECRET || '';
+const API_ADMIN_TOKEN = process.env.API_ADMIN_TOKEN || '';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || '';
+const APP_BASE_URL = String(process.env.APP_BASE_URL || '').replace(/\/$/, '');
+const SESSION_SECRET = process.env.SESSION_SECRET || '';
+const SGSEP_PANEL_BASE_URL = process.env.SGSEP_PANEL_BASE_URL || '';
+const SGSEP_PANEL_USER = process.env.SGSEP_PANEL_USER || '';
+const SGSEP_PANEL_PASS = process.env.SGSEP_PANEL_PASS || '';
+const SGSEP_SERVER_HOST = process.env.SGSEP_SERVER_HOST || 'sgsep.lhpvpn.online';
+const SGSEP_INBOUND_ID = Number(process.env.SGSEP_INBOUND_ID || 11);
+const SGSEP_INBOUND_PORT = Number(process.env.SGSEP_INBOUND_PORT || 24776);
+const SGSEP_VERIFY_TLS = String(process.env.SGSEP_VERIFY_TLS || 'false').toLowerCase() === 'true';
 
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -32,12 +49,28 @@ let store = loadStore();
 // Custom Outline VPN packages (local product line delivered alongside Canboso catalog)
 const OUTLINE_PACKAGES = [
   {
+    productId: 'outline_vpn_test_5gb',
+    name: 'Outline VPN Test Key (5 GB)',
+    description: 'Free 5 GB test access for checking speed and compatibility before purchase. One test key per customer.',
+    emoji: 'outline_vpn',
+    productType: 'account',
+    isCustomOutline: true,
+    isTestOutline: true,
+    outlineTotalGb: 5,
+    outlineDays: 3,
+    price: { amount: 0, currency: 'USD', text: 'Free' },
+    availability: { available: null, sold: 0 },
+    promotions: []
+  },
+  {
     productId: 'outline_vpn_1m',
     name: 'Outline VPN 1 Month (1 Device · 200 GB) - full warranty',
     description: '• Private Shadowsocks (ss://) access key for Outline Client.\n• High-speed Singapore / US / Japan routing.\n• Supports iOS, Android, Windows, macOS, and Linux.\n• 1 Device · 200 GB high-speed data · 30-day full warranty.',
     emoji: 'outline_vpn',
     productType: 'account',
     isCustomOutline: true,
+    outlineTotalGb: 200,
+    outlineDays: 30,
     price: { amount: 0.64, currency: 'USD', text: '$0.64' },
     availability: { available: 50, sold: 142 },
     promotions: []
@@ -49,6 +82,8 @@ const OUTLINE_PACKAGES = [
     emoji: 'outline_vpn',
     productType: 'account',
     isCustomOutline: true,
+    outlineTotalGb: 600,
+    outlineDays: 90,
     price: { amount: 1.73, currency: 'USD', text: '$1.73' },
     availability: { available: 35, sold: 89 },
     promotions: []
@@ -60,6 +95,8 @@ const OUTLINE_PACKAGES = [
     emoji: 'outline_vpn',
     productType: 'account',
     isCustomOutline: true,
+    outlineTotalGb: 1200,
+    outlineDays: 180,
     price: { amount: 3.27, currency: 'USD', text: '$3.27' },
     availability: { available: 25, sold: 41 },
     promotions: []
@@ -71,6 +108,8 @@ const OUTLINE_PACKAGES = [
     emoji: 'outline_vpn',
     productType: 'account',
     isCustomOutline: true,
+    outlineTotalGb: 0,
+    outlineDays: 365,
     price: { amount: 5.82, currency: 'USD', text: '$5.82' },
     availability: { available: 20, sold: 64 },
     promotions: []
@@ -207,6 +246,47 @@ function classifyDelivery(p) {
   };
 }
 
+function translatePackageMm(p, delivery) {
+  const rawName = String(p.name || 'Digital package');
+  const rawDescription = String(p.description || '').trim();
+  const duration = rawName.match(/(\d+)\s*(day|days|month|months|year|years|week|weeks)/i);
+  const durationMm = duration
+    ? `${duration[1]} ${/day/i.test(duration[2]) ? 'ရက်' : /week/i.test(duration[2]) ? 'ပတ်' : /year/i.test(duration[2]) ? 'နှစ်' : 'လ'}`
+    : '';
+  const typeMm = p.productType === 'slot'
+    ? 'အီးမေးလ်မှတစ်ဆင့် Slot ဖိတ်ကြားပေးမည့် ပက်ကေ့ချ်'
+    : p.productType === 'upgrade_account'
+      ? 'သင့်အကောင့်ကို အဆင့်မြှင့်ပေးမည့် ပက်ကေ့ချ်'
+      : 'ဝယ်ယူပြီးနောက် အကောင့်အချက်အလက်ကို အလိုအလျောက်ရရှိမည့် ပက်ကေ့ချ်';
+  const deliveryMm = delivery.isInstant
+    ? 'ငွေပေးချေမှုအောင်မြင်ပြီးသည်နှင့် ချက်ချင်းပို့ပေးပါမည်။'
+    : p.productType === 'slot'
+      ? 'ဝယ်ယူရန် သင့်အီးမေးလ်လိုအပ်ပြီး ဖိတ်စာကို အီးမေးလ်သို့ ပို့ပေးပါမည်။'
+      : 'သင့်အကောင့်အချက်အလက်ပေးရန်လိုအပ်ပြီး အက်ဒမင်က အဆင့်မြှင့်ပြီးပါက အတည်ပြုပေးပါမည်။';
+  const warrantyMm = /warranty/i.test(rawDescription + ' ' + rawName)
+    ? 'ဖော်ပြထားသော ကာလအတွင်း အာမခံဝန်ဆောင်မှု ပါဝင်ပါသည်။'
+    : 'ဝယ်ယူမီ ပက်ကေ့ချ်စည်းမျဉ်းများကို စစ်ဆေးပါ။';
+  const featureBits = [];
+  if (/unlimited/i.test(rawDescription + ' ' + rawName)) featureBits.push('Fair-use မူဝါဒအရ အကန့်အသတ်မဲ့ အသုံးပြုနိုင်သည်');
+  const gb = (rawDescription + ' ' + rawName).match(/([\d.]+)\s*(GB|TB)/i);
+  if (gb) featureBits.push(`ဒေတာပမာဏ ${gb[1]} ${gb[2].toUpperCase()} ပါဝင်သည်`);
+  const devices = (rawDescription + ' ' + rawName).match(/(?:up to\s*)?(\d+)\s*devices?/i);
+  if (devices) featureBits.push(`စက် ${devices[1]} လုံးအထိ အသုံးပြုနိုင်သည်`);
+  const summary = [
+    durationMm ? `အသုံးပြုနိုင်သည့်ကာလ ${durationMm} ဖြစ်သည်။` : '',
+    typeMm + ' ဖြစ်သည်။',
+    ...featureBits.map(x => `${x}။`),
+    deliveryMm,
+    warrantyMm
+  ].filter(Boolean).join('\n');
+  return {
+    nameMm: durationMm ? `${rawName.replace(duration[0], '').replace(/[-–—()]+/g, ' ').replace(/\s+/g, ' ').trim()} — ${durationMm}` : rawName,
+    descriptionMm: summary,
+    deliveryLabelMm: delivery.isInstant ? 'ချက်ချင်းပို့ပေးမည်' : p.productType === 'slot' ? 'Slot ဖိတ်ကြားမှု' : 'အကောင့်အဆင့်မြှင့်မှု',
+    deliveryHintMm: deliveryMm
+  };
+}
+
 function canbosoRequest(method, apiPath, bodyObj, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     if (!BUYER_KEY) {
@@ -243,6 +323,85 @@ function canbosoRequest(method, apiPath, bodyObj, extraHeaders = {}) {
     if (payload) req.write(payload);
     req.end();
   });
+}
+
+let sgsepCookie = '';
+const testKeyIssuance = new Map();
+
+function sgsepRequest(method, apiPath, form) {
+  return new Promise((resolve, reject) => {
+    if (!SGSEP_PANEL_BASE_URL || !SGSEP_PANEL_USER || !SGSEP_PANEL_PASS) return reject(new Error('Outline VPN server is not configured'));
+    const u = new URL(apiPath.replace(/^\//, ''), SGSEP_PANEL_BASE_URL.endsWith('/') ? SGSEP_PANEL_BASE_URL : SGSEP_PANEL_BASE_URL + '/');
+    const payload = form ? new URLSearchParams(form).toString() : '';
+    const headers = { Accept: 'application/json' };
+    if (sgsepCookie) headers.Cookie = sgsepCookie;
+    if (payload) {
+      headers['Content-Type'] = 'application/x-www-form-urlencoded';
+      headers['Content-Length'] = Buffer.byteLength(payload);
+    }
+    const request = https.request(u, { method, headers, timeout: 15000, rejectUnauthorized: SGSEP_VERIFY_TLS }, response => {
+      const setCookie = response.headers['set-cookie'];
+      if (setCookie?.length) sgsepCookie = setCookie.map(x => x.split(';')[0]).join('; ');
+      let raw = '';
+      response.on('data', chunk => raw += chunk);
+      response.on('end', () => {
+        let data = null;
+        try { data = raw ? JSON.parse(raw) : {}; } catch {}
+        resolve({ status: response.statusCode, headers: response.headers, data });
+      });
+    });
+    request.on('error', reject);
+    request.on('timeout', () => { request.destroy(); reject(new Error('Outline VPN server timeout')); });
+    if (payload) request.write(payload);
+    request.end();
+  });
+}
+
+async function sgsepLogin() {
+  sgsepCookie = '';
+  const result = await sgsepRequest('POST', '/login', { username: SGSEP_PANEL_USER, password: SGSEP_PANEL_PASS });
+  if (result.status !== 200 || result.data?.success === false || !sgsepCookie) throw new Error('Outline VPN server authentication failed');
+}
+
+async function sgsepApi(method, apiPath, form) {
+  if (!sgsepCookie) await sgsepLogin();
+  let result = await sgsepRequest(method, apiPath, form);
+  if ([301, 302, 303, 307, 308, 401, 403, 404].includes(result.status)) {
+    await sgsepLogin();
+    result = await sgsepRequest(method, apiPath, form);
+  }
+  if (result.status < 200 || result.status >= 300 || result.data?.success === false) throw new Error(result.data?.msg || 'Outline VPN server request failed');
+  return result.data;
+}
+
+async function provisionOutlineClient(pkg, orderCode) {
+  const inboundResult = await sgsepApi('GET', `/panel/api/inbounds/get/${SGSEP_INBOUND_ID}`);
+  const inbound = inboundResult.obj || inboundResult.data || inboundResult;
+  if (Number(inbound.id) !== SGSEP_INBOUND_ID || Number(inbound.port) !== SGSEP_INBOUND_PORT) throw new Error('Outline VPN inbound configuration mismatch');
+  const settings = typeof inbound.settings === 'string' ? JSON.parse(inbound.settings) : inbound.settings;
+  const method = String(settings?.method || 'chacha20-ietf-poly1305');
+  const is2022 = method.startsWith('2022-');
+  const passwordBytes = method.includes('256') ? 32 : 16;
+  const password = is2022 ? crypto.randomBytes(passwordBytes).toString('base64') : crypto.randomBytes(12).toString('base64url');
+  const email = `web-${String(orderCode).replace(/[^a-zA-Z0-9]/g, '').slice(-14)}-${crypto.randomBytes(3).toString('hex')}`;
+  const expiryTime = pkg.outlineDays ? Date.now() + pkg.outlineDays * 86400000 : 0;
+  const client = {
+    email,
+    password,
+    method: is2022 ? '' : method,
+    totalGB: pkg.outlineTotalGb ? pkg.outlineTotalGb * 1073741824 : 0,
+    expiryTime,
+    limitIp: pkg.isTestOutline ? 1 : 1,
+    enable: true,
+    tgId: 0,
+    subId: crypto.randomBytes(8).toString('hex'),
+    comment: `web:${pkg.productId}`,
+    reset: 0
+  };
+  await sgsepApi('POST', '/panel/api/inbounds/addClient', { id: String(SGSEP_INBOUND_ID), settings: JSON.stringify({ clients: [client] }) });
+  const userInfo = is2022 ? `${method}:${settings.password}:${password}` : `${method}:${password}`;
+  const key = `ss://${Buffer.from(userInfo).toString('base64url')}@${SGSEP_SERVER_HOST}:${SGSEP_INBOUND_PORT}#${encodeURIComponent(`Exabyte-${email}`)}`;
+  return { key, email, expiryTime, totalGb: pkg.outlineTotalGb };
 }
 
 let memoryCatalog = null;
@@ -310,6 +469,7 @@ function buildStructuredCatalog(rawProducts, metaInfo) {
     const usd = Number(p.price?.amount || 0);
     const mmk = usdToMmk(usd);
     const image = p.image ? (p.image.startsWith('http') ? p.image : API_BASE + p.image) : null;
+    const mm = translatePackageMm(p, deliv);
 
     catMap.get(key).packages.push({
       productId: p.productId,
@@ -317,12 +477,16 @@ function buildStructuredCatalog(rawProducts, metaInfo) {
       description: p.description || '',
       productType: p.productType || 'account',
       isCustomOutline: !!p.isCustomOutline,
+      isTestOutline: !!p.isTestOutline,
+      outlineTotalGb: Number(p.outlineTotalGb || 0),
+      outlineDays: Number(p.outlineDays || 0),
       usd,
       usdText: p.price?.text || `$${usd.toFixed(2)}`,
       mmk,
       mmkText: `${mmk.toLocaleString('en-US')} Ks`,
       image,
       promotions: p.promotions || [],
+      ...mm,
       ...deliv
     });
   }
@@ -365,6 +529,11 @@ function sendJson(res, status, obj) {
   res.end(body);
 }
 
+function sendHtml(res, status, html) {
+  res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(html);
+}
+
 function readBody(req, maxBytes = 8 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
     let chunks = [], len = 0;
@@ -385,6 +554,121 @@ function readBody(req, maxBytes = 8 * 1024 * 1024) {
   });
 }
 
+const sessions = new Map();
+const oauthStates = new Map();
+
+function safeEqual(a, b) {
+  const left = Buffer.from(String(a || ''));
+  const right = Buffer.from(String(b || ''));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function isAdminRequest(req) {
+  const bearer = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  return !!API_ADMIN_TOKEN && safeEqual(bearer, API_ADMIN_TOKEN);
+}
+
+function parseCookies(req) {
+  return Object.fromEntries(String(req.headers.cookie || '').split(';').map(x => x.trim()).filter(Boolean).map(x => {
+    const i = x.indexOf('=');
+    return [x.slice(0, i), decodeURIComponent(x.slice(i + 1))];
+  }));
+}
+
+function currentUser(req) {
+  const sid = parseCookies(req).exa_session;
+  const session = sid ? sessions.get(sid) : null;
+  if (!session || session.expiresAt < Date.now()) return null;
+  return session.user;
+}
+
+function createSession(res, user) {
+  const sid = crypto.randomBytes(32).toString('base64url');
+  sessions.set(sid, { user, expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 });
+  res.setHeader('Set-Cookie', `exa_session=${encodeURIComponent(sid)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${APP_BASE_URL.startsWith('https://') ? '; Secure' : ''}`);
+}
+
+async function telegramApi(method, payload) {
+  if (!TG_BOT_TOKEN) throw new Error('Telegram payment review is not configured');
+  const response = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/${method}`, {
+    method: 'POST',
+    body: payload instanceof FormData ? payload : JSON.stringify(payload),
+    headers: payload instanceof FormData ? undefined : { 'Content-Type': 'application/json' }
+  });
+  const data = await response.json();
+  if (!response.ok || !data.ok) throw new Error(data.description || `Telegram ${method} failed`);
+  return data.result;
+}
+
+async function notifyTopupAdmins(topup) {
+  if (!TG_BOT_TOKEN || !TG_ADMIN_IDS.length) return { configured: false, delivered: 0 };
+  const match = String(topup.screenshot || '').match(/^data:(image\/(?:png|jpeg|webp));base64,(.+)$/);
+  if (!match) throw new Error('Unsupported payment screenshot format');
+  const bytes = Buffer.from(match[2], 'base64');
+  const caption = [
+    '<b>New website top-up</b>',
+    `Request: <code>${topup.id}</code>`,
+    `Amount: <b>${Number(topup.amountMmk).toLocaleString('en-US')} MMK</b>`,
+    `Method: <b>${String(topup.method).replace(/[<>&]/g, '')}</b>`,
+    'Status: <b>Awaiting review</b>'
+  ].join('\n');
+  let delivered = 0;
+  for (const chatId of TG_ADMIN_IDS) {
+    const form = new FormData();
+    form.append('chat_id', chatId);
+    form.append('photo', new Blob([bytes], { type: match[1] }), `payment-${topup.id}.jpg`);
+    form.append('caption', caption);
+    form.append('parse_mode', 'HTML');
+    form.append('reply_markup', JSON.stringify({ inline_keyboard: [[
+      { text: 'Approve (Paid)', callback_data: `topup:approve:${topup.id}` },
+      { text: 'Reject', callback_data: `topup:reject:${topup.id}` }
+    ]] }));
+    await telegramApi('sendPhoto', form);
+    delivered++;
+  }
+  return { configured: true, delivered };
+}
+
+async function handleTelegramWebhook(req, res) {
+  if (!TG_WEBHOOK_SECRET || !safeEqual(req.headers['x-telegram-bot-api-secret-token'], TG_WEBHOOK_SECRET)) {
+    return sendJson(res, 401, { success: false });
+  }
+  const update = await readBody(req, 1024 * 1024);
+  const cq = update.callback_query;
+  if (!cq) return sendJson(res, 200, { success: true });
+  const adminId = String(cq.from?.id || '');
+  if (!TG_ADMIN_IDS.includes(adminId)) {
+    await telegramApi('answerCallbackQuery', { callback_query_id: cq.id, text: 'Unauthorized', show_alert: true });
+    return sendJson(res, 200, { success: true });
+  }
+  const [kind, action, id] = String(cq.data || '').split(':');
+  if (kind !== 'topup' || !['approve', 'reject'].includes(action)) {
+    await telegramApi('answerCallbackQuery', { callback_query_id: cq.id, text: 'Unknown action' });
+    return sendJson(res, 200, { success: true });
+  }
+  const item = store.topups.find(x => x.id === id);
+  if (!item) {
+    await telegramApi('answerCallbackQuery', { callback_query_id: cq.id, text: 'Request not found', show_alert: true });
+    return sendJson(res, 200, { success: true });
+  }
+  if (item.status === 'pending') {
+    item.status = action === 'approve' ? 'approved' : 'rejected';
+    item.reviewedAt = new Date().toISOString();
+    item.reviewedBy = adminId;
+    if (action === 'approve') store.balanceMmk += item.amountMmk;
+    saveStore(store);
+  }
+  await telegramApi('answerCallbackQuery', { callback_query_id: cq.id, text: item.status === 'approved' ? 'Top-up approved' : 'Top-up rejected' });
+  if (cq.message?.chat?.id && cq.message?.message_id) {
+    await telegramApi('editMessageCaption', {
+      chat_id: cq.message.chat.id,
+      message_id: cq.message.message_id,
+      caption: `Website top-up ${item.id}\n${Number(item.amountMmk).toLocaleString('en-US')} MMK\nStatus: ${item.status.toUpperCase()}`
+    });
+  }
+  return sendJson(res, 200, { success: true });
+}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -395,14 +679,101 @@ const MIME = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
-  '.ico': 'image/x-icon'
+  '.ico': 'image/x-icon',
+  '.ttf': 'font/ttf'
 };
 
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = u.pathname;
 
+  // --- AUTH ROUTES ---
+  if (pathname === '/api/auth/config' && req.method === 'GET') {
+    return sendJson(res, 200, {
+      success: true,
+      google: !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_REDIRECT_URI && SESSION_SECRET),
+      telegram: !!(TG_BOT_TOKEN && TG_BOT_USERNAME && APP_BASE_URL && SESSION_SECRET),
+      telegramBot: TG_BOT_USERNAME
+    });
+  }
+
+  if (pathname === '/api/auth/me' && req.method === 'GET') {
+    return sendJson(res, 200, { success: true, user: currentUser(req) });
+  }
+
+  if (pathname === '/auth/logout' && req.method === 'GET') {
+    const sid = parseCookies(req).exa_session;
+    if (sid) sessions.delete(sid);
+    res.writeHead(302, { Location: '/#/', 'Set-Cookie': 'exa_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0' });
+    return res.end();
+  }
+
+  if (pathname === '/auth/google' && req.method === 'GET') {
+    if (!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_REDIRECT_URI && SESSION_SECRET)) return sendHtml(res, 503, '<h1>Google sign-in is not configured</h1><p>Add the documented Google OAuth environment variables.</p>');
+    const state = crypto.randomBytes(24).toString('base64url');
+    oauthStates.set(state, Date.now() + 10 * 60 * 1000);
+    const auth = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    auth.search = new URLSearchParams({ client_id: GOOGLE_CLIENT_ID, redirect_uri: GOOGLE_REDIRECT_URI, response_type: 'code', scope: 'openid email profile', state, prompt: 'select_account' }).toString();
+    res.writeHead(302, { Location: auth.toString() });
+    return res.end();
+  }
+
+  if (pathname === '/auth/google/callback' && req.method === 'GET') {
+    const state = u.searchParams.get('state') || '';
+    const code = u.searchParams.get('code') || '';
+    const expiry = oauthStates.get(state);
+    oauthStates.delete(state);
+    if (!expiry || expiry < Date.now() || !code) return sendHtml(res, 400, '<h1>Google sign-in expired</h1><p>Please return to the store and try again.</p>');
+    try {
+      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ code, client_id: GOOGLE_CLIENT_ID, client_secret: GOOGLE_CLIENT_SECRET, redirect_uri: GOOGLE_REDIRECT_URI, grant_type: 'authorization_code' })
+      });
+      const token = await tokenRes.json();
+      if (!token.access_token) throw new Error('Token exchange failed');
+      const profileRes = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${token.access_token}` } });
+      const profile = await profileRes.json();
+      if (!profile.sub) throw new Error('Profile lookup failed');
+      createSession(res, { id: `google:${profile.sub}`, provider: 'google', name: profile.name || profile.email, email: profile.email || null, picture: profile.picture || null });
+      res.writeHead(302, { Location: '/#/' });
+      return res.end();
+    } catch {
+      return sendHtml(res, 502, '<h1>Google sign-in failed</h1><p>Please try again later.</p>');
+    }
+  }
+
+  if (pathname === '/auth/telegram' && req.method === 'GET') {
+    if (!(TG_BOT_TOKEN && TG_BOT_USERNAME && APP_BASE_URL && SESSION_SECRET)) return sendHtml(res, 503, '<h1>Telegram sign-in is not configured</h1><p>Add the documented Telegram environment variables.</p>');
+    const callback = `${APP_BASE_URL}/auth/telegram/callback`;
+    return sendHtml(res, 200, `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Telegram Sign In</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#070b16;color:#fff;font:16px system-ui}.box{text-align:center;padding:32px}p{color:#aab4c8}</style></head><body><div class="box"><h1>Sign in to Exabyte</h1><p>Continue securely with Telegram.</p><script async src="https://telegram.org/js/telegram-widget.js?22" data-telegram-login="${TG_BOT_USERNAME.replace(/[^a-zA-Z0-9_]/g, '')}" data-size="large" data-auth-url="${callback.replace(/"/g, '&quot;')}" data-request-access="write"></script></div></body></html>`);
+  }
+
+  if (pathname === '/auth/telegram/callback' && req.method === 'GET') {
+    const suppliedHash = u.searchParams.get('hash') || '';
+    const fields = [...u.searchParams.entries()].filter(([k]) => k !== 'hash').sort(([a], [b]) => a.localeCompare(b));
+    const check = fields.map(([k, v]) => `${k}=${v}`).join('\n');
+    const secret = crypto.createHash('sha256').update(TG_BOT_TOKEN).digest();
+    const expected = crypto.createHmac('sha256', secret).update(check).digest('hex');
+    const authDate = Number(u.searchParams.get('auth_date') || 0) * 1000;
+    if (!safeEqual(expected, suppliedHash) || !authDate || Date.now() - authDate > 10 * 60 * 1000) return sendHtml(res, 401, '<h1>Telegram sign-in could not be verified</h1>');
+    const id = u.searchParams.get('id');
+    createSession(res, {
+      id: `telegram:${id}`,
+      provider: 'telegram',
+      name: [u.searchParams.get('first_name'), u.searchParams.get('last_name')].filter(Boolean).join(' ') || u.searchParams.get('username') || 'Telegram user',
+      username: u.searchParams.get('username') || null,
+      picture: u.searchParams.get('photo_url') || null
+    });
+    res.writeHead(302, { Location: '/#/' });
+    return res.end();
+  }
+
   // --- API ROUTES ---
+  if (pathname === '/api/tg/webhook' && req.method === 'POST') {
+    try { return await handleTelegramWebhook(req, res); }
+    catch { return sendJson(res, 500, { success: false }); }
+  }
   if (pathname === '/api/catalog' && req.method === 'GET') {
     try {
       const force = u.searchParams.get('refresh') === '1';
@@ -426,8 +797,9 @@ const server = http.createServer(async (req, res) => {
       success: true,
       rateMmk: RATE_MMK,
       balanceMmk: store.balanceMmk,
-      orders: store.orders,
-      topups: store.topups,
+      user: currentUser(req),
+      orders: store.orders.map(({ accounts, customerAccounts, customerEmail, ...order }) => order),
+      topups: store.topups.map(({ screenshot, screenshotHash, ...topup }) => topup),
       supplierWallet
     });
   }
@@ -441,6 +813,8 @@ const server = http.createServer(async (req, res) => {
       const screenshot = String(body.screenshot || '');
       if (amountMmk < 1000) return sendJson(res, 400, { success: false, message: 'Minimum top up is 1,000 Ks' });
       if (!screenshot.startsWith('data:image/')) return sendJson(res, 400, { success: false, message: 'Payment screenshot is required' });
+      const screenshotHash = crypto.createHash('sha256').update(screenshot).digest('hex');
+      if (store.topups.some(x => x.screenshotHash === screenshotHash)) return sendJson(res, 409, { success: false, message: 'This payment screenshot has already been submitted.' });
 
       const item = {
         id: 'TP' + Date.now().toString(36).toUpperCase(),
@@ -448,18 +822,28 @@ const server = http.createServer(async (req, res) => {
         method,
         txRef,
         screenshot,
+        screenshotHash,
         status: 'pending',
         createdAt: new Date().toISOString()
       };
       store.topups.unshift(item);
       saveStore(store);
-      return sendJson(res, 200, { success: true, topup: item, balanceMmk: store.balanceMmk });
+      try {
+        const notification = await notifyTopupAdmins(item);
+        item.notificationStatus = notification.configured ? 'sent' : 'not_configured';
+        item.notificationDelivered = notification.delivered;
+      } catch {
+        item.notificationStatus = 'failed';
+      }
+      saveStore(store);
+      return sendJson(res, 200, { success: true, topup: item, balanceMmk: store.balanceMmk, reviewChannel: item.notificationStatus });
     } catch (e) {
       return sendJson(res, 400, { success: false, message: e.message });
     }
   }
 
   if (pathname === '/api/topup/approve' && req.method === 'POST') {
+    if (!isAdminRequest(req)) return sendJson(res, 401, { success: false, message: 'Admin authorization required' });
     try {
       const body = await readBody(req);
       const t = store.topups.find(x => x.id === body.id);
@@ -495,6 +879,7 @@ const server = http.createServer(async (req, res) => {
         if (found) { pkg = found; cat = c; break; }
       }
       if (!pkg) return sendJson(res, 404, { success: false, message: 'Product package not found in catalog.' });
+      if (pkg.isTestOutline && quantity !== 1) return sendJson(res, 400, { success: false, message: 'The free Outline test is limited to one 5 GB key.' });
 
       // Validate requirements
       if (!pkg.inStock) return sendJson(res, 409, { success: false, message: 'This package is currently out of stock.' });
@@ -515,18 +900,22 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
-      // Case 1: Custom Outline VPN package -> fulfill locally with generated ss:// key
+      // Case 1: Outline VPN package -> provision on the isolated sgsep inbound.
       if (pkg.isCustomOutline) {
-        const keys = [];
-        for (let i = 0; i < quantity; i++) {
-          const secret = crypto.randomBytes(12).toString('hex');
-          const b64 = Buffer.from(`chacha20-ietf-poly1305:${secret}`).toString('base64');
-          const port = 20000 + Math.floor(Math.random() * 9000);
-          keys.push(`ss://${b64}@sg-${(i % 4) + 1}.exabyte.store:${port}/?outline=1#Exabyte-${encodeURIComponent(pkg.name.split('(')[0].trim())}`);
+        const identity = currentUser(req)?.id || req.socket.remoteAddress || 'anonymous';
+        if (pkg.isTestOutline) {
+          const lastIssued = testKeyIssuance.get(identity) || 0;
+          if (Date.now() - lastIssued < 24 * 60 * 60 * 1000) return sendJson(res, 429, { success: false, message: 'One free 5 GB test key is available per customer every 24 hours.' });
         }
+        const orderCode = (pkg.isTestOutline ? 'TEST-' : 'EX-') + Date.now().toString(36).toUpperCase();
+        const provisioned = [];
+        for (let i = 0; i < quantity; i++) {
+          provisioned.push(await provisionOutlineClient(pkg, orderCode));
+        }
+        if (pkg.isTestOutline) testKeyIssuance.set(identity, Date.now());
         store.balanceMmk -= totalMmk;
         const order = {
-          orderCode: 'EX-' + Date.now().toString(36).toUpperCase(),
+          orderCode,
           productId: pkg.productId,
           categoryId: cat.id,
           categoryName: cat.name,
@@ -539,7 +928,8 @@ const server = http.createServer(async (req, res) => {
           totalMmk,
           totalUsd,
           customerEmail: customerEmail || null,
-          accounts: keys.map(k => ({ user: k, password: '', otherInfo: 'Outline Client ss:// access key' })),
+          accounts: provisioned.map(x => ({ user: x.key, password: '', otherInfo: `${x.totalGb || 'Unlimited'} GB Outline Client access key` })),
+          outlineClients: provisioned.map(({ key, ...client }) => client),
           createdAt: new Date().toISOString()
         };
         store.orders.unshift(order);

@@ -21,10 +21,10 @@
     <span class="wordmark"><b>EXABYTE</b><small>DIGITAL STORE</small></span>
   </a>
   <nav class="nav" aria-label="Primary">
-    <a href="#/" data-r="home">Home</a>
-    <a href="#/products" data-r="products">Products</a>
+    <a href="#/" data-r="home" data-i18n="home">Home</a>
+    <a href="#/products" data-r="products" data-i18n="products">Products</a>
     <a href="#/products?g=vpn" data-r="vpn">VPN</a>
-    <a href="#/topup" data-r="topup">Top Up</a>
+    <a href="#/topup" data-r="topup" data-i18n="topup">Top Up</a>
     <div class="dd">
       <button class="ddb" data-r="orders">History <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="ddm"><a href="#/orders?t=buy">Product Purchase</a><a href="#/orders?t=top">Top Up Requests</a></div>
@@ -32,6 +32,8 @@
     <a href="#/api" data-r="api">API</a>
   </nav>
   <div class="acts">
+    <div class="lang-switch" role="group" aria-label="Language"><button type="button" data-lang="en" class="on">EN</button><button type="button" data-lang="mm">မြန်မာ</button></div>
+    <button class="authbtn" id="authBtn" type="button" aria-label="Sign in">Sign in</button>
     <a class="wallet" href="#/topup" aria-label="Wallet balance. Top up">
       <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/></svg>
       <b id="bal">0</b><span>MMK</span>
@@ -45,6 +47,7 @@
   <div class="mback" data-close></div>
   <nav class="mpanel" aria-label="Mobile">
     <div class="mhead"><b>Menu</b><button data-close aria-label="Close menu">&times;</button></div>
+    <button class="mauth" id="mAuthBtn" type="button">Sign in with Telegram or Google</button>
     <a href="#/">Home</a><a href="#/products">All Products</a><a href="#/products?g=vpn">VPN</a><a href="#/products?g=ai">AI Tools</a>
     <a href="#/topup">Top Up Wallet</a><a href="#/orders?t=buy">Purchase History</a><a href="#/orders?t=top">Top Up History</a><a href="#/api">Reseller API</a>
   </nav>

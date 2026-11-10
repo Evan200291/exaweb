@@ -26,6 +26,26 @@ const STATE = {
   tops: [],
   supplierWallet: null
 };
+let LANG = localStorage.getItem('exa_lang') === 'mm' ? 'mm' : 'en';
+let AUTH = { user: null, google: false, telegram: false };
+
+const COPY = {
+  en: {
+    home: 'Home', products: 'Products', topup: 'Top Up', signIn: 'Sign in', popular: 'Popular Categories', seeMore: 'See More',
+    selectPackage: 'Select Package', orderInput: 'Order Input', packageDetails: 'Package Description & Warranty Policy',
+    price: 'Price', stock: 'Stock', sold: 'Sold', type: 'Type', instant: 'Instant', packages: 'packages', free: 'Free'
+  },
+  mm: {
+    home: 'ပင်မ', products: 'ကုန်ပစ္စည်းများ', topup: 'ငွေဖြည့်ရန်', signIn: 'အကောင့်ဝင်ရန်', popular: 'လူကြိုက်များသော အမျိုးအစားများ', seeMore: 'နောက်ထပ်ကြည့်ရန်',
+    selectPackage: 'ပက်ကေ့ချ်ရွေးပါ', orderInput: 'မှာယူရန်အချက်အလက်', packageDetails: 'ပက်ကေ့ချ်အသေးစိတ်နှင့် အာမခံစည်းမျဉ်း',
+    price: 'စျေးနှုန်း', stock: 'လက်ကျန်', sold: 'ရောင်းပြီး', type: 'အမျိုးအစား', instant: 'ချက်ချင်းရမည်', packages: 'ပက်ကေ့ချ်', free: 'အခမဲ့'
+  }
+};
+const t = key => (COPY[LANG] && COPY[LANG][key]) || COPY.en[key] || key;
+const pkgName = p => LANG === 'mm' && p.nameMm ? p.nameMm : p.name;
+const pkgDescription = p => LANG === 'mm' && p.descriptionMm ? p.descriptionMm : p.description;
+const pkgDeliveryLabel = p => LANG === 'mm' && p.deliveryLabelMm ? p.deliveryLabelMm : p.deliveryLabel;
+const pkgDeliveryHint = p => LANG === 'mm' && p.deliveryHintMm ? p.deliveryHintMm : p.deliveryHint;
 
 /* ---------------- Helpers ---------------- */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -81,6 +101,38 @@ function modal(html, cls = '') {
   document.body.append(m);
   m.querySelector('.mp').focus();
   return m;
+}
+
+function applyLanguageChrome() {
+  document.documentElement.lang = LANG === 'mm' ? 'my' : 'en';
+  $$('[data-lang]').forEach(b => b.classList.toggle('on', b.dataset.lang === LANG));
+  $$('[data-i18n]').forEach(el => { const value = t(el.dataset.i18n); if (value) el.textContent = value; });
+  const authLabel = AUTH.user ? (AUTH.user.name || 'Account') : t('signIn');
+  const authBtn = $('#authBtn'); if (authBtn) authBtn.textContent = authLabel;
+  const mobileAuth = $('#mAuthBtn'); if (mobileAuth) mobileAuth.textContent = AUTH.user ? authLabel : (LANG === 'mm' ? 'Telegram သို့မဟုတ် Google ဖြင့် ဝင်ရန်' : 'Sign in with Telegram or Google');
+}
+
+async function loadIdentity() {
+  try {
+    const [config, me] = await Promise.all([
+      fetch('/api/auth/config').then(r => r.json()),
+      fetch('/api/auth/me').then(r => r.json())
+    ]);
+    AUTH = { ...config, user: me.user || null };
+  } catch {}
+  applyLanguageChrome();
+}
+
+function showAuth() {
+  if (AUTH.user) {
+    return modal(`<h3>${esc(AUTH.user.name || 'Your account')}</h3><p>${AUTH.user.provider === 'telegram' ? 'Telegram' : 'Google'} account connected.</p><div class="macts"><button class="btn" data-x>Close</button><a class="btn pri" href="/auth/logout">Sign out</a></div>`, 'c');
+  }
+  const unavailable = LANG === 'mm' ? 'ဆာဗာတွင် သတ်မှတ်ချက်မပြည့်စုံသေးပါ' : 'Not configured on this server yet';
+  modal(`<h3>${LANG === 'mm' ? 'Exabyte အကောင့်သို့ ဝင်ရန်' : 'Sign in to Exabyte'}</h3><p>${LANG === 'mm' ? 'မှာယူမှုနှင့် ငွေဖြည့်မှတ်တမ်းများကို လုံခြုံစွာ သိမ်းရန် အကောင့်ဝင်ပါ။' : 'Sign in to securely keep your purchases and top-up history.'}</p>
+    <div class="authchoices">
+      ${AUTH.telegram ? '<a class="btn lg tg" href="/auth/telegram">Continue with Telegram</a>' : `<button class="btn lg" disabled>Telegram — ${unavailable}</button>`}
+      ${AUTH.google ? '<a class="btn lg google" href="/auth/google">Continue with Google</a>' : `<button class="btn lg" disabled>Google — ${unavailable}</button>`}
+    </div><p class="authnote">${LANG === 'mm' ? 'အကောင့်ဝင်ခြင်းဆိုင်ရာ လျှို့ဝှက်အချက်အလက်များကို browser code ထဲတွင် မသိမ်းပါ။' : 'Authentication secrets stay on the server and are never included in browser code.'}</p>`, 'c');
 }
 
 /* ---------------- API Data Sync ---------------- */
@@ -167,17 +219,17 @@ function initBanner() {
 
 /* ---------------- Card & Section Components ---------------- */
 function deliveryStatusPill(cat) {
-  if (!cat.anyInStock) return `<span class="inst out">${ICON.clock}Out of Stock</span>`;
-  if (cat.hasInstant && cat.hasManual) return `<span class="inst">${ICON.bolt}Instant &amp; Manual</span>`;
-  if (cat.hasInstant) return `<span class="inst">${ICON.bolt}Instant</span>`;
-  return `<span class="inst man">${ICON.clock}Slot / Upgrade</span>`;
+  if (!cat.anyInStock) return `<span class="inst out">${ICON.clock}${LANG === 'mm' ? 'လက်ကျန်မရှိ' : 'Out of Stock'}</span>`;
+  if (cat.hasInstant && cat.hasManual) return `<span class="inst">${ICON.bolt}${LANG === 'mm' ? 'ချက်ချင်း / လူကိုယ်တိုင်' : 'Instant &amp; Manual'}</span>`;
+  if (cat.hasInstant) return `<span class="inst">${ICON.bolt}${t('instant')}</span>`;
+  return `<span class="inst man">${ICON.clock}${LANG === 'mm' ? 'Slot / အဆင့်မြှင့်' : 'Slot / Upgrade'}</span>`;
 }
 
 const cardHTML = cat => `<a class="card" href="#/p/${cat.id}" style="--c:${cat.color}">
   <div class="media">${centerMark(cat)}${cat.hot ? '<span class="tag">HOT</span>' : ''}${cat.isNew ? `<span class="tag new" style="${cat.hot ? 'left:auto;right:8px' : ''}">NEW</span>` : (!cat.anyInStock ? `<span class="tag out" style="${cat.hot ? 'left:auto;right:8px' : ''}">SOLD OUT</span>` : '')}${logo(cat)}</div>
-  <div class="ct"><h4>${esc(cat.name)}</h4>${deliveryStatusPill(cat)}<span class="from">From <b>${fmt(cat.minMmk)}</b> Ks · ${cat.packages.length} pkg${cat.packages.length > 1 ? 's' : ''}</span></div></a>`;
+  <div class="ct"><h4>${esc(cat.name)}</h4>${deliveryStatusPill(cat)}<span class="from">${LANG === 'mm' ? 'စတင်စျေး' : 'From'} <b>${cat.minMmk ? fmt(cat.minMmk) + ' Ks' : t('free')}</b> · ${cat.packages.length} ${t('packages')}</span></div></a>`;
 
-const section = (title, list, href) => `<section class="sec"><div class="sh"><span class="st">${title}</span><a class="more" href="${href}">See More ${ICON.arrow}</a></div><div class="grid">${list.map(cardHTML).join('')}</div></section>`;
+const section = (title, list, href) => `<section class="sec"><div class="sh"><span class="st">${title}</span><a class="more" href="${href}">${t('seeMore')} ${ICON.arrow}</a></div><div class="grid">${list.map(cardHTML).join('')}</div></section>`;
 
 /* ---------------- Views ---------------- */
 function vHome() {
@@ -187,14 +239,14 @@ function vHome() {
   return `<div class="home">
   <section class="hero-row">${bannerHTML()}
     <aside class="hero">
-      <div><span class="eyebrow"><i></i> Myanmar's digital marketplace</span><h1>Everything digital.<br><em>Ready when you are.</em></h1><p>Premium apps, AI tools and secure VPN access with transparent MMK pricing and human support.</p></div>
+      <div><span class="eyebrow"><i></i> ${LANG === 'mm' ? 'မြန်မာ့ဒစ်ဂျစ်တယ်ဈေးကွက်' : "Myanmar's digital marketplace"}</span><h1>${LANG === 'mm' ? 'ဒစ်ဂျစ်တယ်လိုအပ်ချက်တိုင်း' : 'Everything digital.'}<br><em>${LANG === 'mm' ? 'သင်လိုချိန်မှာ အဆင်သင့်' : 'Ready when you are.'}</em></h1><p>${LANG === 'mm' ? 'Premium app များ၊ AI tool များနှင့် လုံခြုံသော VPN များကို MMK စျေးနှုန်းဖြင့် ဝယ်ယူနိုင်ပါသည်။' : 'Premium apps, AI tools and secure VPN access with transparent MMK pricing and human support.'}</p></div>
       <div class="hstats"><div><b>${STATE.totalProducts}</b><span>Packages</span></div><div><b>${cats.length}</b><span>Categories</span></div><div><b>24/7</b><span>Support</span></div></div>
-      <div class="acts2"><a class="btn pri lg" href="#/products">${ICON.bag} Browse All (${STATE.totalProducts})</a><a class="btn lg" href="#/topup">${ICON.wallet} Top Up Wallet</a></div>
+      <div class="acts2"><a class="btn pri lg" href="#/products">${ICON.bag} ${LANG === 'mm' ? 'အားလုံးကြည့်ရန်' : 'Browse All'} (${STATE.totalProducts})</a><a class="btn lg" href="#/topup">${ICON.wallet} ${LANG === 'mm' ? 'Wallet ငွေဖြည့်ရန်' : 'Top Up Wallet'}</a></div>
     </aside>
   </section>
   <button class="szt" id="szt">Show banner safe zones</button>
-  <div class="mhero"><a class="btn pri" href="#/products">${ICON.bag} Browse (${STATE.totalProducts})</a><a class="btn" href="#/topup">${ICON.wallet} Top Up</a></div>
-  ${section('Popular Categories', featured, '#/products')}
+  <div class="mhero"><a class="btn pri" href="#/products">${ICON.bag} ${LANG === 'mm' ? 'ကြည့်ရန်' : 'Browse'} (${STATE.totalProducts})</a><a class="btn" href="#/topup">${ICON.wallet} ${t('topup')}</a></div>
+  ${section(t('popular'), featured, '#/products')}
   ${section('VPN & Security', cats.filter(p => p.group === 'vpn'), '#/products?g=vpn')}
   ${section('AI Tools & APIs', cats.filter(p => p.group === 'ai'), '#/products?g=ai')}
   ${section('Design & Creative', cats.filter(p => p.group === 'design'), '#/products?g=design')}
@@ -210,7 +262,7 @@ function vHome() {
 let catFilter = 'all', q = '';
 function vProducts(params) {
   if (params.get('g')) catFilter = params.get('g');
-  return `<div class="ph"><div class="crumb"><a href="#/">Home</a> / Products</div><h1>All Products (${STATE.categories.length} Categories · ${STATE.totalProducts} Packages)</h1><p>Select any category to view its packages, stock, warranty, and full description.</p></div>
+  return `<div class="ph"><div class="crumb"><a href="#/">${t('home')}</a> / ${t('products')}</div><h1>${LANG === 'mm' ? 'ကုန်ပစ္စည်းအားလုံး' : 'All Products'} (${STATE.categories.length} · ${STATE.totalProducts})</h1><p>${LANG === 'mm' ? 'ပက်ကေ့ချ်၊ လက်ကျန်၊ အာမခံနှင့် အသေးစိတ်အချက်အလက်များကို ကြည့်ရန် အမျိုးအစားတစ်ခုရွေးပါ။' : 'Select any category to view its packages, stock, warranty, and full description.'}</p></div>
   <section class="sec" style="margin-top:12px"><div class="fbar">
     <div class="tabs">${Object.entries({ all: 'All', ...GROUPS }).map(([k, v]) => `<button data-tab="${k}" class="${k === catFilter ? 'on' : ''}">${v}</button>`).join('')}</div>
     <label class="search">${ICON.search}<input id="q" type="search" placeholder="Search categories or packages..." value="${esc(q)}"></label>
@@ -246,28 +298,28 @@ function vProduct(id, params) {
   </aside>
   <div class="steps">
     <section class="scard">
-      <div class="shd"><span class="num">1</span><h2>Select Package</h2><small>${cat.packages.length} package${cat.packages.length > 1 ? 's' : ''}</small></div>
+      <div class="shd"><span class="num">1</span><h2>${t('selectPackage')}</h2><small>${cat.packages.length} ${t('packages')}</small></div>
       <div class="pkgs" id="pkgs">${cat.packages.map((k, i) => {
         const stkText = k.available === null ? '📦 ∞' : (k.available > 0 ? `📦 ${k.available}` : '❌ 0');
         return `<button class="pkg ${i === selIdx ? 'on' : ''} ${!k.inStock ? 'out' : ''}" data-pk="${i}">
           ${logo(cat)}
-          <b>${esc(k.name)}</b>
+          <b>${esc(pkgName(k))}</b>
           <div class="meta">
             <span class="pill ${k.isInstant ? '' : 'man'}">${k.isInstant ? '⚡ Instant' : (k.productType === 'slot' ? '📩 Slot Invite' : '🛠️ Upgrade')}</span>
             <span class="pill ${k.inStock ? 'stk' : 'out'}">${stkText}</span>
           </div>
-          <span class="pr">${fmt(k.mmk)} <span>Ks</span></span>
+          <span class="pr">${k.mmk ? `${fmt(k.mmk)} <span>Ks</span>` : t('free')}</span>
         </button>`;
       }).join('')}</div>
     </section>
     <section class="pdetail" id="pkgdetail"></section>
     <section class="scard">
-      <div class="shd"><span class="num">2</span><h2 id="step2title">Order Input</h2><small id="step2req"></small></div>
+      <div class="shd"><span class="num">2</span><h2 id="step2title">${t('orderInput')}</h2><small id="step2req"></small></div>
       <div id="reqfields"></div>
     </section>
     <section class="paybar stick" id="paybar"></section>
   </div></div>
-  ${section('Related Categories', STATE.categories.filter(x => x.group === cat.group && x.id !== cat.id).slice(0, 5), '#/products?g=' + cat.group)}`;
+  ${section(LANG === 'mm' ? 'ဆက်စပ်အမျိုးအစားများ' : 'Related Categories', STATE.categories.filter(x => x.group === cat.group && x.id !== cat.id).slice(0, 5), '#/products?g=' + cat.group)}`;
 }
 
 function getParsedLines(id) {
@@ -282,23 +334,23 @@ function updateSelectedPackageDetails() {
   if (!k) return;
 
   const stockLabel = k.available === null ? '∞ accounts' : `${k.available} accounts`;
-  const maxStock = typeof k.available === 'number' && k.available > 0 ? k.available : 50;
+  const maxStock = k.isTestOutline ? 1 : (typeof k.available === 'number' && k.available > 0 ? k.available : 50);
   if (curQty > maxStock) curQty = Math.max(1, maxStock);
 
   // Left sidebar summary
   const badgesEl = $('#pbadges');
   if (badgesEl) {
     badgesEl.innerHTML = `
-      <span class="badge ${k.isInstant ? '' : 'w'}">${k.isInstant ? ICON.bolt : ICON.clock} ${esc(k.deliveryLabel)}</span>
+      <span class="badge ${k.isInstant ? '' : 'w'}">${k.isInstant ? ICON.bolt : ICON.clock} ${esc(pkgDeliveryLabel(k))}</span>
       <span class="badge b">${ICON.shield} ${esc(k.productType.toUpperCase())}</span>`;
   }
   const metaEl = $('#pmeta');
   if (metaEl) {
     metaEl.innerHTML = `
-      <li><b>Selected:</b> ${esc(k.name)}</li>
-      <li><b>Price:</b> ${fmt(k.mmk)} Ks</li>
+      <li><b>${LANG === 'mm' ? 'ရွေးထားသည်' : 'Selected'}:</b> ${esc(pkgName(k))}</li>
+      <li><b>${t('price')}:</b> ${k.mmk ? fmt(k.mmk) + ' Ks' : t('free')}</li>
       <li><b>Stock:</b> ${esc(stockLabel)} · <b>Sold:</b> ${fmt(k.sold)}</li>
-      <li><b>Fulfillment:</b> ${esc(k.deliveryHint)}</li>`;
+      <li><b>${LANG === 'mm' ? 'ပို့ဆောင်မှု' : 'Fulfillment'}:</b> ${esc(pkgDeliveryHint(k))}</li>`;
   }
 
   // Full Package Details Card (matches exact Telegram bot output per package)
@@ -309,19 +361,20 @@ function updateSelectedPackageDetails() {
       <div class="pd-head">
         ${logo(curCat)}
         <div>
-          <h3>${esc(k.name)}</h3>
-          <span class="inst ${k.isInstant ? '' : 'man'}">${k.isInstant ? ICON.bolt : ICON.clock} ${esc(k.deliveryLabel)}</span>
+          <h3>${esc(pkgName(k))}</h3>
+          <span class="inst ${k.isInstant ? '' : 'man'}">${k.isInstant ? ICON.bolt : ICON.clock} ${esc(pkgDeliveryLabel(k))}</span>
         </div>
       </div>
       <div class="pd-stats">
-        <div class="pd-stat"><small>💰 Price</small><b>${fmt(k.mmk)} Ks</b></div>
-        <div class="pd-stat"><small>📦 Stock</small><b>${esc(stockLabel)}</b></div>
-        <div class="pd-stat"><small>📊 Sold</small><b>${fmt(k.sold)} accounts</b></div>
-        <div class="pd-stat"><small>⚡ Type</small><b>${esc(k.productType)}</b></div>
+        <div class="pd-stat"><small>${t('price')}</small><b>${k.mmk ? fmt(k.mmk) + ' Ks' : t('free')}</b></div>
+        <div class="pd-stat"><small>${t('stock')}</small><b>${esc(stockLabel)}</b></div>
+        <div class="pd-stat"><small>${t('sold')}</small><b>${fmt(k.sold)}</b></div>
+        <div class="pd-stat"><small>${t('type')}</small><b>${esc(k.productType)}</b></div>
       </div>
       ${promos ? `<div class="pd-promo">${esc(promos)}</div>` : ''}
-      <div class="pd-desc-lbl">💎 Package Description &amp; Warranty Policy</div>
-      <div class="pd-desc">${linkify(k.description || `${k.name}\n\n${k.deliveryHint}`)}</div>`;
+      <div class="pd-desc-lbl">${t('packageDetails')}</div>
+      <div class="pd-desc ${LANG === 'mm' ? 'mm-copy' : ''}">${linkify(pkgDescription(k) || `${pkgName(k)}\n\n${pkgDeliveryHint(k)}`)}</div>
+      ${LANG === 'mm' ? `<div class="lang-note">မူရင်း API အချက်အလက်မှ ပက်ကေ့ချ်အမျိုးအစား၊ ကာလ၊ ပို့ဆောင်ပုံနှင့် အာမခံကို မြန်မာလို ရှင်းပြထားပါသည်။</div>` : ''}`;
   }
 
   // Step 2: Dynamic Order Input (matches exact Telegram bot prompt per package type)
@@ -408,14 +461,14 @@ function drawPay() {
   } else if (short > 0) {
     actionBtn = `<a class="btn pri lg block" href="#/topup?need=${short}">${ICON.wallet} Top Up (+${fmt(short)} Ks)</a>`;
   } else {
-    actionBtn = `<button class="btn pri lg block" data-act="confirm">BUY NOW</button>`;
+    actionBtn = `<button class="btn pri lg block" data-act="confirm">${k.isTestOutline ? (LANG === 'mm' ? '5 GB စမ်းသပ် Key ရယူရန်' : 'GET 5 GB TEST KEY') : (LANG === 'mm' ? 'ယခုဝယ်ယူရန်' : 'BUY NOW')}</button>`;
   }
 
-  pb.innerHTML = `<div><h3>Selected (${k.isInstant ? 'Instant Delivery' : esc(k.deliveryLabel)})</h3>
-    <div class="sel">${esc(k.name)} × ${curQty}
+  pb.innerHTML = `<div><h3>${LANG === 'mm' ? 'ရွေးထားသည်' : 'Selected'} (${esc(pkgDeliveryLabel(k))})</h3>
+    <div class="sel">${esc(pkgName(k))} × ${curQty}
       <small>${!k.inStock ? '<span class="warn">Out of stock</span>' : (short > 0 ? `<span class="warn">Wallet short by ${fmt(short)} Ks (Balance: ${fmt(STATE.bal)} Ks)</span>` : `Wallet Balance: ${fmt(STATE.bal)} Ks`)}</small>
     </div></div>
-    <div class="tot"><span>Total Payment</span><b>${fmt(total)} Ks</b></div>
+    <div class="tot"><span>${LANG === 'mm' ? 'စုစုပေါင်း' : 'Total Payment'}</span><b>${total ? fmt(total) + ' Ks' : t('free')}</b></div>
     ${actionBtn}`;
 }
 
@@ -445,15 +498,15 @@ function confirmBuy() {
   }
 
   const total = k.mmk * curQty;
-  const m = modal(`<h3>Confirm Purchase</h3><p>${esc(k.deliveryHint)}</p>
+  const m = modal(`<h3>${k.isTestOutline ? (LANG === 'mm' ? 'စမ်းသပ် Key ရယူရန်' : 'Get your test key') : (LANG === 'mm' ? 'ဝယ်ယူမှုအတည်ပြုရန်' : 'Confirm Purchase')}</h3><p>${esc(pkgDeliveryHint(k))}</p>
     <div class="msum">
-      <div class="mrow"><span>Package</span><b>${esc(k.name)}</b></div>
-      <div class="mrow"><span>Fulfillment</span><b>${esc(k.deliveryLabel)}</b></div>
+      <div class="mrow"><span>${t('packages')}</span><b>${esc(pkgName(k))}</b></div>
+      <div class="mrow"><span>${LANG === 'mm' ? 'ပို့ဆောင်မှု' : 'Fulfillment'}</span><b>${esc(pkgDeliveryLabel(k))}</b></div>
       <div class="mrow"><span>Quantity</span><b>${curQty}</b></div>
       ${emailList.length ? `<div class="mrow"><span>Slot Email(s)</span><b>${esc(emailList.join(', '))}</b></div>` : ''}
       ${accList.length ? `<div class="mrow"><span>Upgrade Account(s)</span><b>${esc(accList.join(', '))}</b></div>` : ''}
       <div class="mrow"><span>Balance After</span><b>${fmt(STATE.bal - total)} Ks</b></div>
-      <div class="mrow t"><span>Total Payment</span><b>${fmt(total)} Ks</b></div>
+      <div class="mrow t"><span>${LANG === 'mm' ? 'စုစုပေါင်း' : 'Total Payment'}</span><b>${total ? fmt(total) + ' Ks' : t('free')}</b></div>
     </div>
     <div class="macts"><button class="btn lg" data-x>Cancel</button><button class="btn pri lg" id="ok">Confirm &amp; Pay</button></div>`);
   m.querySelector('#ok').onclick = () => {
@@ -582,23 +635,9 @@ function initTopup() {
       }).then(r => r.json());
       if (!res.success) { $('#send').disabled = false; return toast(res.message || 'Failed'); }
       STATE.tops.unshift(res.topup);
-      modal(`<div class="okic">${ICON.check}</div><h3>Top Up Submitted</h3><p>Your payment screenshot has been uploaded. You can approve it from the History tab or wait for auto-verification.</p><div class="oid">Request ID: ${res.topup.id}</div>
+      modal(`<div class="okic">${ICON.check}</div><h3>${LANG === 'mm' ? 'ငွေဖြည့်တောင်းဆိုမှု ပို့ပြီးပါပြီ' : 'Top Up Submitted'}</h3><p>${LANG === 'mm' ? 'ငွေလွှဲ screenshot ကို Telegram admin bot သို့ ပို့ထားပြီး အက်ဒမင်အတည်ပြုချက်ကို စောင့်နေပါသည်။' : 'Your payment screenshot was sent to the Telegram admin review bot. Your wallet will update after approval.'}</p><div class="oid">Request ID: ${res.topup.id}</div>
         <div class="macts"><a class="btn lg" href="#/orders?t=top" data-x>View Requests</a><a class="btn pri lg" href="#/products" data-x>Browse Store</a></div>`, 'c');
       location.hash = '#/orders?t=top';
-      // Auto-approve after 4 seconds for instant live store testing
-      setTimeout(async () => {
-        const ap = await fetch('/api/topup/approve', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: res.topup.id })
-        }).then(r => r.json());
-        if (ap.success) {
-          setWalletUI(ap.balanceMmk);
-          const found = STATE.tops.find(x => x.id === res.topup.id);
-          if (found) found.status = 'approved';
-          toast(`Top up approved: +${fmt(res.topup.amountMmk)} Ks`);
-          if (location.hash.startsWith('#/orders')) render();
-        }
-      }, 4000);
     } catch {
       $('#send').disabled = false;
       toast('Network error submitting top up');
@@ -618,7 +657,7 @@ function vOrders(params) {
 
   const tops = STATE.tops.length ? STATE.tops.map(x => {
     const ok = x.status === 'approved' || x.ok;
-    return `<div class="hr"><img class="thumb" src="${x.screenshot || x.img}" alt="Screenshot"><div class="ht"><b>${esc(x.method || x.m)} Top Up</b><small>${esc(x.id)} · ${esc(new Date(x.createdAt || x.d).toLocaleString())}</small></div><div class="ha"><b>+${fmt(x.amountMmk || x.amt)} Ks</b><span class="stt ${ok ? 'ok' : ''}">${ok ? 'APPROVED' : 'PENDING'}</span>${!ok ? ` <button class="lk" data-approve="${esc(x.id)}" style="margin-left:6px">Approve Now</button>` : ''}</div></div>`;
+    return `<div class="hr"><span class="thumb topup-thumb">${ICON.wallet}</span><div class="ht"><b>${esc(x.method || x.m)} Top Up</b><small>${esc(x.id)} · ${esc(new Date(x.createdAt || x.d).toLocaleString())}</small></div><div class="ha"><b>+${fmt(x.amountMmk || x.amt)} Ks</b><span class="stt ${ok ? 'ok' : ''}">${ok ? 'APPROVED' : (x.status === 'rejected' ? 'REJECTED' : 'PENDING REVIEW')}</span></div></div>`;
   }).join('') : `<p class="empty">No top up requests yet. <a class="lk" href="#/topup">Top up now</a></p>`;
 
   return `<div class="ph"><div class="crumb"><a href="#/">Home</a> / History</div><h1>Order &amp; Top Up History</h1><p>View your delivered account credentials, slot invitations, and top up requests.</p></div>
@@ -674,6 +713,14 @@ async function render() {
 const menu = $('#mmenu'), burger = $('#burger');
 function closeMenu() { menu.hidden = true; burger.setAttribute('aria-expanded', 'false'); }
 burger.onclick = () => { menu.hidden = false; burger.setAttribute('aria-expanded', 'true'); };
+$('#authBtn').onclick = showAuth;
+$('#mAuthBtn').onclick = showAuth;
+$$('[data-lang]').forEach(button => button.onclick = () => {
+  LANG = button.dataset.lang;
+  localStorage.setItem('exa_lang', LANG);
+  applyLanguageChrome();
+  render();
+});
 menu.addEventListener('click', e => { if (e.target.closest('[data-close]') || e.target.closest('a')) closeMenu(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMenu(); $$('.modal').forEach(m => m.remove()); } });
 
@@ -710,26 +757,11 @@ document.addEventListener('click', async e => {
     return showOrder(STATE.buys.find(o => (o.orderCode || o.id) === code));
   }
 
-  const ap = e.target.closest('[data-approve]');
-  if (ap) {
-    const id = ap.dataset.approve;
-    const res = await fetch('/api/topup/approve', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id })
-    }).then(r => r.json());
-    if (res.success) {
-      setWalletUI(res.balanceMmk);
-      const found = STATE.tops.find(x => x.id === id);
-      if (found) found.status = 'approved';
-      toast('Top up approved!');
-      render();
-    }
-    return;
-  }
-
   const cp = e.target.closest('[data-copy]');
   if (cp) { navigator.clipboard?.writeText(cp.dataset.copy).then(() => toast('Copied to clipboard'), () => toast('Copy failed')); }
 });
 
 addEventListener('hashchange', render);
+applyLanguageChrome();
+loadIdentity();
 render();

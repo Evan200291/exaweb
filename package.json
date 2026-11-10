@@ -4,7 +4,7 @@
   "private": true,
   "description": "Responsive digital subscription storefront with local MMK payments.",
   "scripts": {
-    "start": "node server.js",
+    "start": "node --env-file-if-exists=.env server.js",
     "check": "node --check app.js && node --check server.js"
   },
   "engines": {
