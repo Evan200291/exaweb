@@ -664,7 +664,7 @@ function initTopup() {
     $('#tsum').innerHTML = `${a >= 1000 ? fmt(a) + ' Ks · ' + METHODS[mi][0] : bi('Enter amount (min 1,000)','ငွေပမာဏထည့်ပါ (အနည်းဆုံး ၁,၀၀၀)')}<small>${img ? `<span style="color:#4ade80">${bi('Screenshot attached','Screenshot တင်ပြီး')}</span>` : `<span class="warn">${bi('Screenshot required','Screenshot မဖြစ်မနေလိုသည်')}</span>`}</small>`;
     $('#send').disabled = !(a >= 1000 && img);
   };
-  const load = f => {
+  const legacyLoad = f => {
     if (!f || !f.type.startsWith('image/')) return toast(bi('Please choose an image','ပုံဖိုင်ရွေးပါ။'));
     if (f.size > 5e6) return toast(bi('File too large (max 5 MB)','ဖိုင်အရွယ်အစားကြီးလွန်းသည် (အများဆုံး 5 MB)'));
     const r = new FileReader();
@@ -678,6 +678,43 @@ function initTopup() {
         $('#file').onchange = e => load(e.target.files[0]); chk();
       }; im.src = r.result;
     }; r.readAsDataURL(f);
+  };
+  const load = f => {
+    if (!f || !f.type.startsWith('image/')) return toast(bi('Please choose an image','ပုံဖိုင်တစ်ခု ရွေးပါ။'));
+    const reader = new FileReader();
+    reader.onload = () => {
+      const source = new Image();
+      source.onload = () => {
+        const drawCompressed = (scale = 1, quality = .82) => {
+          const longest = Math.max(source.naturalWidth || source.width, source.naturalHeight || source.height);
+          const baseScale = Math.min(1, 1600 / longest);
+          const width = Math.max(1, Math.round((source.naturalWidth || source.width) * baseScale * scale));
+          const height = Math.max(1, Math.round((source.naturalHeight || source.height) * baseScale * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(source, 0, 0, width, height);
+          canvas.toBlob(blob => {
+            if (!blob) return toast(bi('Could not process this image','ဤပုံကို မပြင်ဆင်နိုင်ပါ။'));
+            // Stay comfortably below the API JSON body limit, including base64 overhead.
+            if (blob.size > 1400 * 1024 && scale > .35) return drawCompressed(scale * .78, Math.max(.58, quality - .08));
+            const compressedReader = new FileReader();
+            compressedReader.onload = () => {
+              img = String(compressedReader.result);
+              const d = $('#drop');
+              d.classList.add('has');
+              d.innerHTML = `<input type="file" id="file" accept="image/*"><img src="${img}" alt="${bi('Payment screenshot preview','ငွေလွှဲ screenshot နမူနာ')}"><span class="chg">${bi('Change image','ပုံပြောင်းရန်')}</span>`;
+              $('#file').onchange = e => load(e.target.files[0]);
+              chk();
+            };
+            compressedReader.readAsDataURL(blob);
+          }, 'image/jpeg', quality);
+        };
+        drawCompressed();
+      };
+      source.onerror = () => toast(bi('This image could not be opened','ဤပုံကို ဖွင့်မရပါ။'));
+      source.src = String(reader.result);
+    };
+    reader.readAsDataURL(f);
   };
   $('#amt').oninput = chk;
   $$('[data-amt]').forEach(b => b.onclick = () => { $('#amt').value = b.dataset.amt; chk(); });
@@ -768,6 +805,25 @@ function vApi() {
 
 const vNotFound = () => `<div class="ph"><h1>Page not found</h1><p><a class="lk" href="#/">Back to home</a></p></div>`;
 
+function vInvoice() {
+  return `<main class="invoice-page">
+    <header class="invoice-top"><a class="invoice-brand" href="#/"><img src="exabyte-symbol.jpg" alt="Exabyte"><span><b>EXABYTE</b><small>DIGITAL STORE</small></span></a><div class="invoice-status"><small>PAYMENT STATUS</small><b>PAID</b></div></header>
+    <section class="invoice-hero"><div><span>INVOICE · SERVICE AGREEMENT</span><h1>Outline VPN<br>Business Access</h1><p>Dedicated connectivity for a 300-user organization, managed and supported by Exabyte.</p></div><div class="invoice-id"><small>INVOICE NUMBER</small><b>EXA-300-019</b><small>ISSUED</small><b>11 NOV 2026</b></div></section>
+    <section class="invoice-grid"><article class="invoice-card buyer"><small>BILLED TO</small><h2>Mr Chan Wanna Ko</h2><p>Outline VPN dedicated service<br>300 access keys · 1 month</p></article><article class="invoice-card"><small>SERVICE</small><h2>Singapore SGSEP</h2><p>Dedicated resources · Managed routing<br>Professional technical support</p></article></section>
+    <section class="invoice-card invoice-lines"><div class="invoice-line invoice-head"><span>DESCRIPTION</span><span>UNIT PRICE</span><span>QTY</span><span>AMOUNT</span></div><div class="invoice-line"><div><b>Outline VPN — 1 Month Access</b><small>Dedicated service allocation for organization users</small></div><span>5,000 Ks</span><span>300</span><b>1,500,000 Ks</b></div><div class="invoice-total"><span>Total paid</span><b>1,500,000 Ks</b></div></section>
+    <section class="invoice-sla"><div class="sla-intro"><span>EXABYTE · SERVICE LEVEL AGREEMENT</span><h2>ဝန်ဆောင်မှုဆိုင်ရာ သဘောတူညီချက်များ</h2><p>VPN Service Terms &amp; SLA — ဤစာချုပ်သည် အထက်ဖော်ပြပါ ဝန်ဆောင်မှုနှင့် အသုံးပြုသူ ၃၀၀ အတွက် အကျုံးဝင်ပါသည်။</p></div><div class="sla-list">
+      <article><i>01</i><div><h3>သီးသန့် Server အသုံးပြုခွင့်</h3><small>Dedicated Server &amp; Resources</small><p>ဤသဘောတူညီချက်အရ ဝယ်ယူထားသော အဖွဲ့အစည်းအတွက် အခြား Clients များနှင့် မရောနှောဘဲ သီးသန့် Server Resources ခွဲထုတ်ပေးမည်ဖြစ်သည်။ ထို့ကြောင့် လိုင်းဆွဲအားနှင့် တည်ငြိမ်မှုအပိုင်းတွင် ယုံကြည်စိတ်ချစွာ အသုံးပြုနိုင်သည်။</p></div></article>
+      <article><i>02</i><div><h3>နည်းပညာပံ့ပိုးမှုနှင့် SLA</h3><small>Technical Support &amp; Resolution</small><p>Latency သို့မဟုတ် ချိတ်ဆက်မှုပြဿနာများကို အကြောင်းကြားနိုင်ပြီး Exabyte Team မှ (၈) နာရီအတွင်း စစ်ဆေး၍ ဖြေရှင်းဆောင်ရွက်ပေးမည်ဖြစ်သည်။</p></div></article>
+      <article><i>03</i><div><h3>Server ပြောင်းလဲခြင်း</h3><small>Server Migration</small><p>ပိုမိုကောင်းမွန်သော လမ်းကြောင်း သို့မဟုတ် Latency နည်းသော Server Region သို့ ပြောင်းလိုပါက တောင်းဆိုနိုင်ပြီး (၄၈) နာရီအတွင်း စီစဉ်ပေးမည်ဖြစ်သည်။ ပုံမှန် Migration တွင် Access Key အသစ်ပြန်ထည့်ရန် မလိုအပ်ပါ။</p></div></article>
+      <article><i>04</i><div><h3>Firewall ကန့်သတ်ချက်များ</h3><small>Firewall Restrictions &amp; Exceptional Events</small><p>Firewall အသစ်များမှ ပိတ်ဆို့ခြင်းဖြစ်ပါက Blocking Pattern ကို စစ်ဆေးပြီး အပြီးသတ်ဖြေရှင်းရန် (၁) ပတ်ခန့် ကြာမြင့်နိုင်သည်။ ထိုကာလအတွင်း အစားထိုးလမ်းကြောင်းများ စီစဉ်ပေးမည်ဖြစ်သော်လည်း ယာယီလိုင်းကျခြင်း သို့မဟုတ် IP Ban များ ဖြစ်နိုင်သည်ကို ကြိုတင်နားလည်ပေးရန် လိုအပ်သည်။</p></div></article>
+      <article><i>05</i><div><h3>ကိုယ်ပိုင် Infrastructure နှင့် Custom Setup</h3><small>Direct Infrastructure</small><p>Exabyte Outline VPN သည် ပြင်ပ Reseller ဝန်ဆောင်မှုမဟုတ်ဘဲ ကိုယ်ပိုင် Server များဖြင့် တိုက်ရိုက်တည်ဆောက်ထားခြင်းဖြစ်သည်။ Customization လိုအပ်ပါက Exabyte Technicians များနှင့် တိုက်ရိုက်ဆွေးနွေးနိုင်သည်။</p></div></article>
+      <article><i>06</i><div><h3>ISP Route Optimization</h3><small>ISP &amp; AS Number Information</small><p>အသုံးပြုသူများသည် မိမိအသုံးပြုနေသော ISP အမည်နှင့် AS Number ကို ပေးပို့ပါက Exabyte မှ ထို ISP သို့ အကောင်းဆုံး Route ရရှိစေနိုင်မည့် VPN Server ကို ရွေးချယ်ညှိနှိုင်းပေးမည်ဖြစ်သည်။ ISP ဘက်မှ Routing၊ Peering သို့မဟုတ် International Gateway ပြဿနာများသည် ယာယီဝန်ဆောင်မှုအနှောင့်အယှက် ဖြစ်စေနိုင်သည်။</p></div></article>
+      <article><i>07</i><div><h3>ဝန်ဆောင်မှုအခြေအနေနှင့် တာဝန်ဝတ္တရား</h3><small>Service Availability &amp; Responsibilities</small><p>စီစဉ်ထားသော Maintenance နှင့် Exabyte Control ပြင်ပရှိ ISP၊ Power၊ Upstream Provider သို့မဟုတ် Force Majeure အခြေအနေများကို အမြန်ဆုံး အသိပေးမည်ဖြစ်သည်။ ဝန်ဆောင်မှုကို တရားဝင်အသုံးပြုရန်နှင့် Access Key များကို လုံခြုံစွာ ထိန်းသိမ်းရန်မှာ အသုံးပြုသူ၏ တာဝန်ဖြစ်သည်။</p></div></article>
+    </div></section>
+    <footer class="invoice-footer"><span>Exabyte Digital Store · exabytedigitalstore.com</span><span>Paid service agreement · Keep this page for your records</span></footer>
+  </main>`;
+}
+
 function applyHomeHeroCopy() {
   if (LANG !== 'mm') return;
   const heroTitle = $('.hero h1');
@@ -785,7 +841,8 @@ async function render(resetScroll = true) {
     v.innerHTML = `<div class="ph"><h1>Loading store catalog...</h1><p>Fetching live products and packages...</p></div>`;
     try { await loadBackendData(false); } catch (e) { v.innerHTML = `<div class="ph"><h1>Error loading catalog</h1><p>${esc(e.message)}</p></div>`; return; }
   }
-  const [path, qs = ''] = location.hash.slice(1).split('?'), params = new URLSearchParams(qs), seg = (path || '/').split('/').filter(Boolean);
+  const directPath = location.pathname === '/300userscontract19' ? '/300userscontract19' : '/';
+  const [path, qs = ''] = (location.hash.slice(1) || directPath).split('?'), params = new URLSearchParams(qs), seg = (path || '/').split('/').filter(Boolean);
   const r = seg[0] || 'home';
   clearInterval(bTimer); closeMenu();
   const navKey = r === 'products' && params.get('g') === 'vpn' ? 'vpn' : r === 'p' ? 'products' : r;
@@ -801,6 +858,7 @@ async function render(resetScroll = true) {
     const btn = $('#refreshCat');
     if (btn) btn.onclick = async () => { btn.textContent = 'Syncing...'; await loadBackendData(true); toast('Catalog synced from Canboso API'); render(); };
   }
+  else if (r === '300userscontract19') v.innerHTML = vInvoice();
   else v.innerHTML = vNotFound();
   if (resetScroll !== false) scrollTo(0, 0);
 }

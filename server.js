@@ -1365,7 +1365,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- STATIC FILES ---
-  let relPath = pathname === '/' ? '/index.html' : pathname;
+  let relPath = (pathname === '/' || pathname === '/300userscontract19') ? '/index.html' : pathname;
   relPath = path.normalize(relPath).replace(/^(\.\.[\/\\])+/, '');
   const filePath = path.join(__dirname, relPath);
   if (filePath.startsWith(__dirname) && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
