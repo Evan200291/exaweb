@@ -13,7 +13,7 @@ The checked-in catalog cache keeps browsing available when the supplier API is n
 ## Integrations
 
 - EN/MM language switching uses the bundled Myanmar font in `assets/fonts`.
-- Package details returned by the supplier catalog include a Burmese explanation generated from the package type, duration, delivery method, data allowance, and warranty metadata.
+- In MM mode, complete seller descriptions are translated to Burmese on demand and cached by product ID plus source hash. URLs and technical login terms are preserved.
 - Telegram and Google sign-in activate only when their server-side environment variables are configured.
 - Payment screenshots are deduplicated and forwarded to the configured Telegram admin bot for approval. Browser users cannot approve their own top-ups.
 - The free 5 GB Outline test key and paid Outline keys are provisioned only through the configured isolated 3X-UI inbound. The server never returns a fake key when the panel is unavailable.
@@ -39,6 +39,27 @@ For local testing, Google permits a localhost redirect such as `http://localhost
 4. Restart the server and check `/api/auth/config`; `telegram` should be `true`.
 
 Telegram payment review additionally needs `TG_ADMIN_IDS` and `TG_WEBHOOK_SECRET`. Register `https://YOUR_DOMAIN/api/tg/webhook` as the bot webhook using the same secret token. Login credentials and webhook secrets must remain server-side.
+
+## Deploy with PM2 without interrupting other apps
+
+The included PM2 configuration uses the unique process name `exabyte-web`. Do not run `pm2 restart all`, `pm2 delete all`, or `pm2 kill` on a shared server.
+
+```bash
+cd /absolute/path/to/exaweb
+npm ci --omit=dev
+cp .env.example .env
+nano .env
+
+pm2 describe exabyte-web >/dev/null 2>&1 \
+  && pm2 reload ecosystem.config.cjs --only exabyte-web --update-env \
+  || pm2 start ecosystem.config.cjs --only exabyte-web
+
+pm2 save
+pm2 status
+pm2 logs exabyte-web --lines 100
+```
+
+This reloads or starts only `exabyte-web`; existing PM2 applications are not restarted.
 
 ## Checks
 

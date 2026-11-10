@@ -210,8 +210,8 @@ async function loadFullPackageTranslation(pkg) {
 
 /* ---------------- Banner (2 slides + safe zones) ---------------- */
 const SLIDES = [
-  { href: '#/p/outline-vpn', alt: 'Outline VPN — Private, fast, borderless. Access keys from 3,550 Ks', d: 'assets/banners/slide1-desktop.webp', m: 'assets/banners/slide1-mobile.webp' },
-  { href: '#/topup', alt: 'Premium apps — Top up once, buy anytime', d: 'assets/banners/slide2-desktop.webp', m: 'assets/banners/slide2-mobile.webp' }
+  { href: '#/p/outline-vpn', alt: 'Outline VPN — private access without borders', d: 'assets/banners/outline-desktop.svg', m: 'assets/banners/outline-mobile.svg' },
+  { href: '#/products?g=ai', alt: 'Premium AI tools and productivity packages', d: 'assets/banners/apps-desktop.svg', m: 'assets/banners/apps-mobile.svg' }
 ];
 const T = (x, y, s, w, f, txt, extra = '') => `<text x="${x}" y="${y}" font-family="Inter,Segoe UI,sans-serif" font-size="${s}" font-weight="${w}" fill="${f}" ${extra}>${txt}</text>`;
 const bgDefs = (id, a, b, gx, gy, glow) => `<defs><linearGradient id="${id}b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient><radialGradient id="${id}g" cx="${gx}" cy="${gy}" r=".55"><stop offset="0" stop-color="${glow}" stop-opacity=".55"/><stop offset="1" stop-color="${glow}" stop-opacity="0"/></radialGradient><pattern id="${id}p" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60 0H0V60" fill="none" stroke="#fff" stroke-opacity=".045"/></pattern></defs>`;
@@ -245,9 +245,7 @@ function art(i, mobile) {
 }
 const bannerHTML = () => `<section class="banner" id="banner" aria-roledescription="carousel" aria-label="Featured">
   <div class="track">${SLIDES.map((s, i) => `<a class="slide ${i ? '' : 'on'}" href="${s.href}" aria-label="${esc(s.alt)}">
-    ${art(i, false)}${art(i, true)}
-    <picture><source media="(min-width:768px)" srcset="${s.d}"><img src="${s.m}" alt="${esc(s.alt)}" onerror="this.parentNode.remove()"></picture>
-    <div class="safe"><i class="cv"></i><i class="sf"></i><i class="dz"></i><em class="lbl"></em></div></a>`).join('')}</div>
+    <picture><source media="(min-width:768px)" srcset="${s.d}"><img src="${s.m}" alt="${esc(s.alt)}"></picture></a>`).join('')}</div>
   <button class="barrow l" data-d="-1" aria-label="Previous slide">${ICON.left}</button><button class="barrow r" data-d="1" aria-label="Next slide">${ICON.arrow}</button>
   <div class="dots" role="tablist">${SLIDES.map((_, i) => `<button data-i="${i}" class="${i ? '' : 'on'}" aria-label="Slide ${i + 1}"></button>`).join('')}</div></section>`;
 let bIdx = 0, bTimer;
@@ -296,7 +294,6 @@ function vHome() {
       <div class="acts2"><a class="btn pri lg" href="#/products">${ICON.bag} ${LANG === 'mm' ? 'အားလုံးကြည့်ရန်' : 'Browse All'} (${STATE.totalProducts})</a><a class="btn lg" href="#/topup">${ICON.wallet} ${LANG === 'mm' ? 'Wallet ငွေဖြည့်ရန်' : 'Top Up Wallet'}</a></div>
     </aside>
   </section>
-  <button class="szt" id="szt">Show banner safe zones</button>
   <div class="mhero"><a class="btn pri" href="#/products">${ICON.bag} ${LANG === 'mm' ? 'ကြည့်ရန်' : 'Browse'} (${STATE.totalProducts})</a><a class="btn" href="#/topup">${ICON.wallet} ${t('topup')}</a></div>
   ${section(t('popular'), featured, '#/products')}
   ${section(groupLabel('vpn'), cats.filter(p => p.group === 'vpn'), '#/products?g=vpn')}
@@ -720,16 +717,15 @@ function vOrders(params) {
 
 /* ---------------- API Status & Documentation View ---------------- */
 function vApi() {
-  return `<div class="ph"><div class="crumb"><a href="#/">${t('home')}</a> / API</div><h1>${bi('Live API Integration & Reseller Docs','တိုက်ရိုက် API ချိတ်ဆက်မှုနှင့် ပြန်လည်ရောင်းချသူလမ်းညွှန်')}</h1><p>${bi(`Connected to Canboso Buyer API v2 with automatic pricing at 1 USD = ${fmt(STATE.rateMmk)} Ks.`,`Canboso Buyer API v2 နှင့် ချိတ်ဆက်ထားပြီး 1 USD = ${fmt(STATE.rateMmk)} Ks နှုန်းဖြင့် အလိုအလျောက်တွက်ချက်သည်။`)}</p></div>
+  return `<div class="ph"><div class="crumb"><a href="#/">${t('home')}</a> / API</div><h1>${bi('Live API Integration & Reseller Docs','တိုက်ရိုက် API ချိတ်ဆက်မှုနှင့် ပြန်လည်ရောင်းချသူလမ်းညွှန်')}</h1><p>${bi('Connected to the live Canboso Buyer API v2 catalog.','Canboso Buyer API v2 ၏ တိုက်ရိုက် Catalog နှင့် ချိတ်ဆက်ထားပါသည်။')}</p></div>
   <div class="pp" style="grid-template-columns:minmax(0,1fr)"><div class="steps" style="max-width:860px;width:100%;margin:0 auto">
   <section class="scard"><div class="shd"><span class="num">1</span><h2>${bi('Live Catalog Status','တိုက်ရိုက် Catalog အခြေအနေ')}</h2><button class="btn" id="refreshCat" style="margin-left:auto;height:34px;padding:0 12px;font-size:12px">${bi('Sync Now','ယခုပြန်လည်ရယူရန်')}</button></div>
     <div class="msum" style="margin:0">
       <div class="mrow"><span>${bi('Catalog Source','Catalog ရင်းမြစ်')}</span><b>${esc(STATE.source.toUpperCase())} (${STATE.totalProducts} ${t('packages')} · ${STATE.categories.length} ${t('categories')})</b></div>
-      <div class="mrow"><span>${bi('Exchange & Profit Rate','ငွေလဲနှုန်းနှင့် ရောင်းစျေးနှုန်း')}</span><b>$1.00 USD = ${fmt(STATE.rateMmk)} MMK (Ks)</b></div>
       <div class="mrow"><span>${bi('Fulfillment Types','ပို့ဆောင်မှုပုံစံများ')}</span><b>${bi('account (Instant) · slot (Email Invite) · upgrade_account (Manual Upgrade)','အကောင့် (ချက်ချင်း) · Slot (Email ဖိတ်ကြားမှု) · အကောင့်အဆင့်မြှင့် (လူကိုယ်တိုင်)')}</b></div>
       <div class="mrow"><span>${bi('Last Synced','နောက်ဆုံးရယူချိန်')}</span><b>${esc(STATE.fetchedAt ? new Date(STATE.fetchedAt).toLocaleString() : bi('Just now','ယခု'))}</b></div>
     </div></section>
-  <section class="scard"><div class="ep"><span class="mt">GET</span><b>/api/catalog</b></div><p class="help" style="margin:0 0 10px">Fetches live Canboso /api/v2/telegram-buyer/products + Outline VPN packages, converts USD to MMK (1$ = 5,500 Ks), and classifies instant vs manual slot/upgrade requirements.</p><div class="code">GET http://localhost:60010/api/catalog</div></section>
+  <section class="scard"><div class="ep"><span class="mt">GET</span><b>/api/catalog</b></div><p class="help" style="margin:0 0 10px">Fetches live Canboso /api/v2/telegram-buyer/products + Outline VPN packages, applies the configured MMK pricing, and classifies instant vs manual slot/upgrade requirements.</p><div class="code">GET http://localhost:60010/api/catalog</div></section>
   <section class="scard"><div class="ep"><span class="mt post">POST</span><b>/api/purchase</b></div><p class="help" style="margin:0 0 10px">Purchases a package using wallet balance and forwards to POST https://canboso.com/api/v2/telegram-buyer/purchase with Idempotency-Key.</p><div class="code">POST http://localhost:60010/api/purchase\nContent-Type: application/json\n\n{\n  "productId": "6a57762993139fafaedf1672",\n  "quantity": 1,\n  "customerEmail": "buyer@example.com"\n}</div></section>
   </div></div>`;
 }
