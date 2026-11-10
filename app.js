@@ -93,7 +93,9 @@ function iconImg(cat, colorHex) {
   return '';
 }
 const logo = (cat, cls = '') => `<span class="logo ${cat.darkText ? 'dk' : ''} ${cls}" style="--c:${cat.color}">${iconImg(cat)}<b>${esc(cat.name[0])}</b></span>`;
-const packageLogo = (cat, pkg, cls = '') => logo({ ...cat, image: pkg && pkg.image && /product-default-images/i.test(pkg.image) ? pkg.image : null }, cls);
+// Use the curated local brand artwork whenever it exists. It is faster and more
+// reliable than waiting for a supplier product-description image on mobile data.
+const packageLogo = (cat, pkg, cls = '') => logo({ ...cat, image: cat.logoPath ? null : (pkg && pkg.image && /product-default-images/i.test(pkg.image) ? pkg.image : null) }, cls);
 const centerMark = cat => `<span class="big">${iconImg(cat, 'ffffff')}<b>${esc(cat.name[0])}</b></span>`;
 
 function setWalletUI(amount) {
@@ -157,11 +159,23 @@ function showAuth() {
 }
 
 /* ---------------- API Data Sync ---------------- */
-async function loadBackendData(forceCatalog = false) {
-  const [catRes, stRes] = await Promise.all([
-    fetch(`/api/catalog${forceCatalog ? '?refresh=1' : ''}`).then(r => r.json()),
-    fetch('/api/state').then(r => r.json())
-  ]);
+let slowLoadTimer = 0;
+function beginSlowLoad() {
+  const loader = $('#site-loader');
+  clearTimeout(slowLoadTimer);
+  slowLoadTimer = setTimeout(() => { if (!document.hidden && loader) loader.hidden = false; }, 650);
+  return () => { clearTimeout(slowLoadTimer); if (loader) loader.hidden = true; };
+}
+
+async function loadBackendData(forceCatalog = false, showLoader = true) {
+  const finishLoading = showLoader ? beginSlowLoad() : () => {};
+  let catRes, stRes;
+  try {
+    [catRes, stRes] = await Promise.all([
+      fetch(`/api/catalog${forceCatalog ? '?refresh=1' : ''}`).then(r => r.json()),
+      fetch('/api/state').then(r => r.json())
+    ]);
+  } finally { finishLoading(); }
   if (catRes && catRes.success) {
     STATE.rateMmk = catRes.rateMmk || 5500;
     STATE.source = catRes.source;
@@ -809,7 +823,7 @@ function vInvoice() {
   return `<main class="invoice-page">
     <header class="invoice-top"><a class="invoice-brand" href="#/"><img src="exabyte-symbol.jpg" alt="Exabyte"><span><b>EXABYTE</b><small>DIGITAL STORE</small></span></a><div class="invoice-status"><small>PAYMENT STATUS</small><b>PAID</b></div></header>
     <section class="invoice-hero"><div><span>INVOICE · SERVICE AGREEMENT</span><h1>Outline VPN<br>Business Access</h1><p>Dedicated connectivity for a 300-user organization, managed and supported by Exabyte.</p></div><div class="invoice-id"><small>INVOICE NUMBER</small><b>EXA-300-019</b><small>ISSUED</small><b>11 NOV 2026</b></div></section>
-    <section class="invoice-grid"><article class="invoice-card buyer"><small>BILLED TO</small><h2>Mr Chan Wanna Ko</h2><p>Outline VPN dedicated service<br>300 access keys · 1 month</p></article><article class="invoice-card"><small>SERVICE</small><h2>Singapore SGSEP</h2><p>Dedicated resources · Managed routing<br>Professional technical support</p></article></section>
+    <section class="invoice-grid"><article class="invoice-card buyer"><small>BILLED TO</small><h2>Mr Chan Wanna Ko</h2><p>Outline VPN dedicated service<br>300 access keys · 1 month</p></article><article class="invoice-card"><small>SERVICE</small><h2>Bangkok region</h2><p>Dedicated resources · Managed routing<br>Professional technical support</p></article></section>
     <section class="invoice-card invoice-lines"><div class="invoice-line invoice-head"><span>DESCRIPTION</span><span>UNIT PRICE</span><span>QTY</span><span>AMOUNT</span></div><div class="invoice-line"><div><b>Outline VPN — 1 Month Access</b><small>Dedicated service allocation for organization users</small></div><span>5,000 Ks</span><span>300</span><b>1,500,000 Ks</b></div><div class="invoice-total"><span>Total paid</span><b>1,500,000 Ks</b></div></section>
     <section class="invoice-sla"><div class="sla-intro"><span>EXABYTE · SERVICE LEVEL AGREEMENT</span><h2>ဝန်ဆောင်မှုဆိုင်ရာ သဘောတူညီချက်များ</h2><p>VPN Service Terms &amp; SLA — ဤစာချုပ်သည် အထက်ဖော်ပြပါ ဝန်ဆောင်မှုနှင့် အသုံးပြုသူ ၃၀၀ အတွက် အကျုံးဝင်ပါသည်။</p></div><div class="sla-list">
       <article><i>01</i><div><h3>သီးသန့် Server အသုံးပြုခွင့်</h3><small>Dedicated Server &amp; Resources</small><p>ဤသဘောတူညီချက်အရ ဝယ်ယူထားသော အဖွဲ့အစည်းအတွက် အခြား Clients များနှင့် မရောနှောဘဲ သီးသန့် Server Resources ခွဲထုတ်ပေးမည်ဖြစ်သည်။ ထို့ကြောင့် လိုင်းဆွဲအားနှင့် တည်ငြိမ်မှုအပိုင်းတွင် ယုံကြည်စိတ်ချစွာ အသုံးပြုနိုင်သည်။</p></div></article>
@@ -872,7 +886,7 @@ async function syncLiveSellerData() {
   const y = scrollY;
   const selectedProductId = curCat && curCat.packages[selIdx] ? curCat.packages[selIdx].productId : null;
   try {
-    await loadBackendData(false);
+    await loadBackendData(false, false);
     const route = (location.hash.slice(1).split('?')[0] || '/').split('/').filter(Boolean);
     if (route[0] === 'p' && route[1]) {
       const freshCategory = STATE.categories.find(c => c.id === route[1]);

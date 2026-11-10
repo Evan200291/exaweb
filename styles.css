@@ -18,6 +18,7 @@ a{color:inherit;text-decoration:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 input{font:inherit;color:inherit}
 img,svg{display:block;max-width:100%}
+.site-loader{position:fixed;inset:0;z-index:500;display:grid;place-content:center;justify-items:center;gap:16px;background:rgba(5,9,19,.84);backdrop-filter:blur(10px);color:#dfe7ff;font:800 12px var(--mono);letter-spacing:.12em;text-transform:uppercase}.site-loader[hidden]{display:none}.site-loader-mark{position:relative;width:86px;height:86px;display:grid;place-items:center}.site-loader-mark img{position:relative;z-index:2;width:38px;height:38px;object-fit:contain;box-shadow:0 0 0 7px rgba(91,124,255,.12)}.site-loader-mark i{position:absolute;inset:0;border:2px solid transparent;border-top-color:#7e98ff;border-radius:50%;animation:exa-spin 1.05s linear infinite}.site-loader-mark i:nth-child(3){inset:9px;border-top-color:#2dd4bf;animation-duration:1.45s;animation-direction:reverse}.site-loader-mark i:nth-child(4){inset:19px;border-top-color:#dce4ff;animation-duration:.8s}@keyframes exa-spin{to{transform:rotate(1turn)}}
 svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .mark,.mark *{fill:currentColor;stroke:none}
 .skip{position:absolute;left:-999px}.skip:focus{left:12px;top:12px;z-index:999;background:#fff;color:#000;padding:8px}
