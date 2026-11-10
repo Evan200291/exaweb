@@ -35,6 +35,8 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const CACHE_FILE = path.join(DATA_DIR, 'catalog-cache.json');
 const TRANSLATION_CACHE_FILE = path.join(DATA_DIR, 'translation-cache.json');
 const STORE_FILE = path.join(DATA_DIR, 'store.json');
+const IMAGE_CACHE_DIR = path.join(DATA_DIR, 'image-cache');
+if (!fs.existsSync(IMAGE_CACHE_DIR)) fs.mkdirSync(IMAGE_CACHE_DIR, { recursive: true });
 
 function loadStore() {
   try {
@@ -728,7 +730,10 @@ function buildStructuredCatalog(rawProducts, metaInfo) {
     const deliv = classifyDelivery(p);
     const usd = Number(p.price?.amount || 0);
     const mmk = Number.isFinite(Number(p.fixedMmk)) ? Number(p.fixedMmk) : usdToMmk(usd);
-    const image = p.image ? (p.image.startsWith('http') ? p.image : API_BASE + p.image) : null;
+    const sourceImage = p.image ? (p.image.startsWith('http') ? p.image : API_BASE + p.image) : null;
+    // Seller-hosted images are routed through a same-origin cache so repeated mobile
+    // views avoid another slow upstream image request.
+    const image = sourceImage ? `/api/image?url=${encodeURIComponent(sourceImage)}` : null;
     const mm = translatePackageMm(p, deliv);
 
     catMap.get(key).packages.push({
@@ -787,6 +792,43 @@ function sendJson(res, status, obj) {
     'Cache-Control': 'no-store'
   });
   res.end(body);
+}
+
+async function serveCachedSellerImage(res, requestedUrl) {
+  let remote;
+  try { remote = new URL(requestedUrl); } catch { return sendJson(res, 400, { success: false, message: 'Invalid image URL' }); }
+  // Catalog artwork is supplier content only; never turn this route into an open proxy.
+  if (remote.protocol !== 'https:' || !/(^|\.)canboso\.com$/i.test(remote.hostname)) {
+    return sendJson(res, 403, { success: false, message: 'Image host is not allowed' });
+  }
+  const key = crypto.createHash('sha256').update(remote.toString()).digest('hex');
+  const file = path.join(IMAGE_CACHE_DIR, `${key}.bin`);
+  const metaFile = path.join(IMAGE_CACHE_DIR, `${key}.json`);
+  const respond = (type, bytes) => {
+    res.writeHead(200, {
+      'Content-Type': type,
+      'Cache-Control': 'public, max-age=2592000, immutable',
+      'Content-Length': bytes.length
+    });
+    res.end(bytes);
+  };
+  try {
+    if (fs.existsSync(file) && fs.existsSync(metaFile)) {
+      const meta = JSON.parse(fs.readFileSync(metaFile, 'utf8'));
+      return respond(meta.type || 'image/jpeg', fs.readFileSync(file));
+    }
+    const upstream = await fetch(remote, { headers: { 'User-Agent': 'ExabyteStore image cache/1.0' }, signal: AbortSignal.timeout(15000) });
+    const type = String(upstream.headers.get('content-type') || '').split(';')[0].toLowerCase();
+    if (!upstream.ok || !type.startsWith('image/')) throw new Error(`Supplier image returned ${upstream.status}`);
+    const bytes = Buffer.from(await upstream.arrayBuffer());
+    if (!bytes.length || bytes.length > 8 * 1024 * 1024) throw new Error('Supplier image is invalid or too large');
+    fs.writeFileSync(file, bytes);
+    fs.writeFileSync(metaFile, JSON.stringify({ type, source: remote.toString(), cachedAt: new Date().toISOString() }));
+    return respond(type, bytes);
+  } catch (error) {
+    console.warn(`Seller image cache failed: ${error.message}`);
+    return sendJson(res, 502, { success: false, message: 'Seller image is temporarily unavailable' });
+  }
 }
 
 function sendHtml(res, status, html) {
@@ -1364,13 +1406,21 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (pathname === '/api/image' && req.method === 'GET') {
+    return serveCachedSellerImage(res, u.searchParams.get('url') || '');
+  }
+
   // --- STATIC FILES ---
   let relPath = (pathname === '/' || pathname === '/300userscontract19') ? '/index.html' : pathname;
   relPath = path.normalize(relPath).replace(/^(\.\.[\/\\])+/, '');
   const filePath = path.join(__dirname, relPath);
   if (filePath.startsWith(__dirname) && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    const longLivedAsset = ['.svg', '.png', '.jpg', '.jpeg', '.webp', '.ico', '.ttf'].includes(ext);
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'application/octet-stream',
+      'Cache-Control': longLivedAsset ? 'public, max-age=2592000, immutable' : 'no-cache'
+    });
     fs.createReadStream(filePath).pipe(res);
   } else {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });

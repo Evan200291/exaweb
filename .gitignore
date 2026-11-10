@@ -3,6 +3,9 @@
 !.env.example
 data/store.json
 data/translation-cache.json
+data/image-cache/
+output/
+tmp/
 node_modules/
 *.log
 *.zip

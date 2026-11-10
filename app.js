@@ -847,6 +847,8 @@ async function render(resetScroll = true) {
   clearInterval(bTimer); closeMenu();
   const navKey = r === 'products' && params.get('g') === 'vpn' ? 'vpn' : r === 'p' ? 'products' : r;
   $$('[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === navKey));
+  document.body.classList.toggle('invoice-mode', r === '300userscontract19');
+  document.body.classList.toggle('orders-mode', r === 'orders');
 
   if (r === 'home') { v.innerHTML = vHome(); applyHomeHeroCopy(); initBanner(); }
   else if (r === 'products') { v.innerHTML = vProducts(params); drawCards(); $('#q').oninput = e => { q = e.target.value; drawCards(); }; }
