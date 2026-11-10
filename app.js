@@ -245,7 +245,7 @@ function art(i, mobile) {
 }
 const bannerHTML = () => `<section class="banner" id="banner" aria-roledescription="carousel" aria-label="Featured">
   <div class="track">${SLIDES.map((s, i) => `<a class="slide ${i ? '' : 'on'}" href="${s.href}" aria-label="${esc(s.alt)}">
-    <picture><source media="(min-width:768px)" srcset="${s.d}"><img src="${s.m}" alt="${esc(s.alt)}"></picture></a>`).join('')}</div>
+    <picture><source media="(min-width:768px)" srcset="${s.d}"><img src="${s.m}" alt="${esc(s.alt)}"></picture>${i === 0 ? '<span class="banner-outline-logo"><img src="assets/logos/outline_vpn.png" alt=""></span>' : '<span class="banner-app-logos"><i><img src="assets/logos/chatgpt.svg" alt=""></i><i><img src="assets/logos/claude.svg" alt=""></i><i><img src="assets/logos/canva.svg" alt=""></i><i><img src="assets/logos/google_one.svg" alt=""></i><i><img src="assets/logos/youtube.svg" alt=""></i><i><img src="assets/logos/spotify.svg" alt=""></i></span>'}</a>`).join('')}</div>
   <button class="barrow l" data-d="-1" aria-label="Previous slide">${ICON.left}</button><button class="barrow r" data-d="1" aria-label="Next slide">${ICON.arrow}</button>
   <div class="dots" role="tablist">${SLIDES.map((_, i) => `<button data-i="${i}" class="${i ? '' : 'on'}" aria-label="Slide ${i + 1}"></button>`).join('')}</div></section>`;
 let bIdx = 0, bTimer;
@@ -455,6 +455,12 @@ function updateSelectedPackageDetails() {
         drawPay();
       };
     }
+  } else if (k.requiresIp) {
+    if (titleEl) titleEl.textContent = bi('Enter IP Address for API Access','API အသုံးပြုရန် IP Address ထည့်ပါ');
+    if (reqNote) reqNote.textContent = bi('Required · IP is registered before delivery','လိုအပ်သည် · ပို့ဆောင်မှုမတိုင်မီ IP ကို မှတ်ပုံတင်ပေးမည်');
+    rf.innerHTML = `
+      <label class="fld"><span>🌐 ${bi('Your public IPv4 or IPv6 address','သင့် Public IPv4 သို့မဟုတ် IPv6 Address')} *</span><input id="f_ip" type="text" inputmode="url" placeholder="203.0.113.10 or 2001:db8::1" autocomplete="off"></label>
+      <p class="help" style="margin-top:8px">${bi('Find it at api.ipify.org. Use the same IP address that will send API requests; an unregistered IP has no warranty.','api.ipify.org တွင် IP ကို စစ်ဆေးပါ။ API Request ပို့မည့် IP ကိုသာ ထည့်ပါ။ မှတ်ပုံမတင်ထားသော IP အတွက် အာမခံမရှိပါ။')}</p>`;
   } else if (k.requiresAccounts) {
     // Upgrade Account product: enter account(s) one per line
     if (titleEl) titleEl.textContent = bi('Enter Account(s) to Upgrade','အဆင့်မြှင့်မည့် အကောင့်များထည့်ပါ');
@@ -482,7 +488,6 @@ function updateSelectedPackageDetails() {
       <div class="fld"><span>✏️ ${bi(`Quantity to buy (1–${maxStock})`,`ဝယ်ယူမည့်အရေအတွက် (၁–${maxStock})`)}</span>
         <div class="qrow"><button type="button" class="qbtn" data-q="-1">−</button><input id="f_qty" class="qin" type="number" min="1" max="${maxStock}" value="${curQty}"><button type="button" class="qbtn" data-q="1">+</button></div>
       </div>
-      <label class="fld"><span>${bi('Telegram / Email (Optional backup)','Telegram / Email (အရန်ဆက်သွယ်ရန်)')}</span><input id="f_email" type="text" placeholder="@username or email" autocomplete="off"></label>
     </div>
     <p class="help" style="margin-top:8px">⚡ ${bi('Account credentials / JSON keys are delivered immediately and saved in History.','အကောင့်အချက်အလက် / JSON key များကို ချက်ချင်းပြသပြီး မှတ်တမ်းတွင် သိမ်းထားမည်။')}</p>`;
     const qin = $('#f_qty');
@@ -525,9 +530,10 @@ function drawPay() {
 function confirmBuy() {
   const k = curCat.packages[selIdx];
   const slotMonths = $('#f_months') ? +$('#f_months').value : undefined;
-  let emailVal = ($('#f_email')?.value || '').trim();
+  let emailVal = '';
   let emailList = [];
   let accList = [];
+  const customerIp = ($('#f_ip')?.value || '').trim();
 
   if (k.requiresEmail) {
     emailList = getParsedLines('#f_emails');
@@ -545,6 +551,11 @@ function confirmBuy() {
       return toast(bi('Please enter your account identifier(s) to upgrade.','အဆင့်မြှင့်မည့် အကောင့်အချက်အလက်ကို ထည့်ပါ။'));
     }
     curQty = accList.length;
+  }
+
+  if (k.requiresIp && !/^[0-9a-fA-F:.]{3,64}$/.test(customerIp)) {
+    $('#f_ip')?.focus();
+    return toast(bi('Please enter a valid public IPv4 or IPv6 address.','မှန်ကန်သော Public IPv4 သို့မဟုတ် IPv6 Address ထည့်ပါ။'));
   }
 
   const total = k.mmk * curQty;
@@ -567,6 +578,7 @@ function confirmBuy() {
       customerEmail: emailVal,
       customerEmails: emailList,
       customerAccounts: accList,
+      customerIp,
       slotMonths
     });
   };
@@ -729,6 +741,31 @@ function vApi() {
   <section class="scard"><div class="ep"><span class="mt post">POST</span><b>/api/purchase</b></div><p class="help" style="margin:0 0 10px">Purchases a package using wallet balance and forwards to POST https://canboso.com/api/v2/telegram-buyer/purchase with Idempotency-Key.</p><div class="code">POST http://localhost:60010/api/purchase\nContent-Type: application/json\n\n{\n  "productId": "6a57762993139fafaedf1672",\n  "quantity": 1,\n  "customerEmail": "buyer@example.com"\n}</div></section>
   </div></div>`;
 }
+function vApi() {
+  const base = location.origin;
+  const auth = 'Authorization: Bearer YOUR_API_TOKEN';
+  return `<div class="ph"><div class="crumb"><a href="#/">${t('home')}</a> / API</div><h1>${bi('Exabyte Reseller API','Exabyte ပြန်လည်ရောင်းချသူ API')}</h1><p>${bi('Server-to-server endpoints for live products, wallet balance, purchases, and order tracking.','တိုက်ရိုက်ကုန်ပစ္စည်းများ၊ Wallet လက်ကျန်၊ ဝယ်ယူမှုနှင့် အော်ဒါခြေရာခံခြင်းအတွက် Server-to-server API ဖြစ်သည်။')}</p></div>
+  <main class="api-docs">
+    <section class="api-intro scard"><div><span class="api-kicker">REST API · JSON · v1</span><h2>${bi('Connect your website to Exabyte','သင့်ဝဘ်ဆိုက်ကို Exabyte နှင့် ချိတ်ဆက်ပါ')}</h2><p class="help">${bi('Use a private bearer token from your server. Never expose this token in browser JavaScript or a public repository.','သီးသန့် Bearer Token ကို သင့် Server မှသာ အသုံးပြုပါ။ Browser JavaScript သို့မဟုတ် Public Repository တွင် မဖော်ပြပါနှင့်။')}</p></div><div class="api-base"><small>BASE URL</small><code>${esc(base)}/api/v1</code></div></section>
+
+    <section class="scard"><div class="shd"><span class="num">1</span><h2>${bi('Authentication','အတည်ပြုခြင်း')}</h2></div><p class="help">${bi('Set API_ADMIN_TOKEN in the Exabyte .env file, then add this header to every v1 request.','Exabyte .env ဖိုင်တွင် API_ADMIN_TOKEN သတ်မှတ်ပြီး v1 Request တိုင်းတွင် ဤ Header ကို ထည့်ပါ။')}</p><div class="code">${auth}\nAccept: application/json\nContent-Type: application/json</div></section>
+
+    <section class="api-status scard"><div class="shd"><span class="num">2</span><h2>${bi('Live service status','တိုက်ရိုက်ဝန်ဆောင်မှုအခြေအနေ')}</h2><button class="btn" id="refreshCat">${bi('Sync catalog','Catalog ပြန်လည်ရယူရန်')}</button></div><div class="api-status-grid"><div><small>${bi('Source','ရင်းမြစ်')}</small><b>${esc(STATE.source.toUpperCase())}</b></div><div><small>${bi('Packages','ပက်ကေ့ချ်')}</small><b>${STATE.totalProducts}</b></div><div><small>${bi('Categories','အမျိုးအစား')}</small><b>${STATE.categories.length}</b></div><div><small>${bi('Last sync','နောက်ဆုံးရယူချိန်')}</small><b>${esc(STATE.fetchedAt ? new Date(STATE.fetchedAt).toLocaleString() : bi('Just now','ယခု'))}</b></div></div></section>
+
+    <section class="api-section"><div class="api-section-head"><span>3</span><div><h2>${bi('Endpoints','Endpoint များ')}</h2><p>${bi('All responses use JSON. Stock and pricing are refreshed from the seller catalog.','Response အားလုံးသည် JSON ဖြစ်ပြီး Stock နှင့် စျေးနှုန်းကို Seller Catalog မှ ပြန်လည်ရယူသည်။')}</p></div></div>
+      <article class="api-endpoint scard"><div class="ep"><span class="mt">GET</span><b>/api/v1/products</b></div><p>${bi('Returns available products, stock, MMK pricing, fulfillment type, warranty, and requirements.','ရရှိနိုင်သောကုန်ပစ္စည်း၊ Stock၊ MMK စျေးနှုန်း၊ ပို့ဆောင်မှုပုံစံ၊ အာမခံနှင့် လိုအပ်ချက်များကို ပြန်ပေးသည်။')}</p><div class="code">curl "${esc(base)}/api/v1/products" \\\n  -H "${auth}"</div></article>
+      <article class="api-endpoint scard"><div class="ep"><span class="mt">GET</span><b>/api/v1/balance</b></div><p>${bi('Returns the buyer wallet balance used for purchases.','ဝယ်ယူရာတွင် အသုံးပြုမည့် Buyer Wallet လက်ကျန်ကို ပြန်ပေးသည်။')}</p><div class="code">curl "${esc(base)}/api/v1/balance" \\\n  -H "${auth}"</div></article>
+      <article class="api-endpoint scard"><div class="ep"><span class="mt post">POST</span><b>/api/v1/purchase</b></div><p>${bi('Purchases an instant account, slot invitation, account upgrade, or Outline plan.','Instant Account၊ Slot Invitation၊ Account Upgrade သို့မဟုတ် Outline Plan ကို ဝယ်ယူသည်။')}</p><div class="api-examples"><div><h4>${bi('Instant / Outline','Instant / Outline')}</h4><div class="code">curl -X POST "${esc(base)}/api/v1/purchase" \\\n  -H "${auth}" \\\n  -H "Content-Type: application/json" \\\n  -d '{\n    "productId": "outline_vpn_1m",\n    "quantity": 1\n  }'</div></div><div><h4>${bi('Slot invitation','Slot ဖိတ်ကြားမှု')}</h4><div class="code">{\n  "productId": "PRODUCT_ID",\n  "quantity": 1,\n  "customerEmail": "buyer@example.com"\n}</div></div><div><h4>${bi('Account upgrade','Account Upgrade')}</h4><div class="code">{\n  "productId": "PRODUCT_ID",\n  "quantity": 1,\n  "customerAccounts": [\n    { "email": "buyer@example.com", "password": "..." }\n  ]\n}</div></div></div></article>
+      <article class="api-endpoint scard"><div class="ep"><span class="mt">GET</span><b>/api/v1/orders?orderCode=ORDER_CODE</b></div><p>${bi('Looks up an order and fulfillment status using its returned order code.','ပြန်ရသော Order Code ဖြင့် အော်ဒါနှင့် ပို့ဆောင်မှုအခြေအနေကို စစ်ဆေးသည်။')}</p><div class="code">curl "${esc(base)}/api/v1/orders?orderCode=EXA-ORDER-CODE" \\\n  -H "${auth}"</div></article>
+    </section>
+
+    <section class="scard"><div class="shd"><span class="num">4</span><h2>${bi('Request fields','Request Field များ')}</h2></div><div class="api-table-wrap"><table class="api-table"><thead><tr><th>Field</th><th>Type</th><th>${bi('Required','လိုအပ်မှု')}</th><th>${bi('Purpose','အသုံးပြုမှု')}</th></tr></thead><tbody><tr><td><code>productId</code></td><td>string</td><td>${bi('Always','အမြဲ')}</td><td>${bi('ID from products','Products မှ ID')}</td></tr><tr><td><code>quantity</code></td><td>integer</td><td>${bi('Always','အမြဲ')}</td><td>${bi('Number of packages','ပက်ကေ့ချ်အရေအတွက်')}</td></tr><tr><td><code>customerEmail</code></td><td>string</td><td>${bi('Slot only','Slot သာ')}</td><td>${bi('Invitation email','ဖိတ်ကြားမည့် Email')}</td></tr><tr><td><code>customerEmails</code></td><td>string[]</td><td>${bi('Multi-slot','Slot များ')}</td><td>${bi('One email per unit','တစ်ခုလျှင် Email တစ်ခု')}</td></tr><tr><td><code>customerAccounts</code></td><td>object[]</td><td>${bi('Upgrade only','Upgrade သာ')}</td><td>${bi('Accounts to upgrade','Upgrade လုပ်မည့် Account')}</td></tr></tbody></table></div></section>
+
+    <section class="scard"><div class="shd"><span class="num">5</span><h2>${bi('Responses and errors','Response နှင့် Error များ')}</h2></div><div class="api-examples"><div><h4>200 / 201</h4><div class="code">{\n  "success": true,\n  "orderCode": "EXA-...",\n  "status": "completed",\n  "delivery": {}\n}</div></div><div><h4>4xx / 5xx</h4><div class="code">{\n  "success": false,\n  "message": "Human-readable error"\n}</div></div></div><div class="api-error-list"><span><b>400</b> Invalid fields</span><span><b>401</b> Missing/invalid token</span><span><b>404</b> Product/order not found</span><span><b>409</b> Stock/order conflict</span><span><b>429</b> Too many requests</span><span><b>503</b> Seller unavailable</span></div></section>
+    <section class="scard"><div class="shd"><span class="num">6</span><h2>${bi('IP-restricted API packages','IP ကန့်သတ်ထားသော API ပက်ကေ့ချ်များ')}</h2></div><p class="help">${bi('When a product response has requiresIp: true, include customerIp with the buyer’s public IPv4 or IPv6 address in the purchase request. The address is registered before the key is delivered.','Product Response တွင် requiresIp: true ဖြစ်ပါက ဝယ်သူ၏ Public IPv4 သို့မဟုတ် IPv6 Address ကို customerIp အဖြစ် Purchase Request တွင် ထည့်ပါ။ Key မပို့မီ IP ကို မှတ်ပုံတင်ပေးမည်။')}</p><div class="code">{\n  "productId": "PRODUCT_ID",\n  "quantity": 1,\n  "customerIp": "203.0.113.10"\n}</div></section>
+  </main>`;
+}
+
 const vNotFound = () => `<div class="ph"><h1>Page not found</h1><p><a class="lk" href="#/">Back to home</a></p></div>`;
 
 /* ---------------- Router ---------------- */

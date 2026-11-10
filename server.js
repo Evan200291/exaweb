@@ -65,54 +65,44 @@ const OUTLINE_PACKAGES = [
   },
   {
     productId: 'outline_vpn_1m',
-    name: 'Outline VPN 1 Month (1 Device · 200 GB) - full warranty',
-    description: '• Private Shadowsocks (ss://) access key for Outline Client.\n• High-speed Singapore / US / Japan routing.\n• Supports iOS, Android, Windows, macOS, and Linux.\n• 1 Device · 200 GB high-speed data · 30-day full warranty.',
+    name: 'Outline VPN 1 Month · 100 GB - full warranty',
+    description: '• Private Shadowsocks (ss://) access key for Outline Client.\n• High-speed Singapore SGSEP server route.\n• Supports iOS, Android, Windows, macOS, and Linux.\n• 100 GB data · 30-day service period · full warranty.',
     emoji: 'outline_vpn',
     productType: 'account',
     isCustomOutline: true,
-    outlineTotalGb: 200,
+    outlineTotalGb: 100,
     outlineDays: 30,
-    price: { amount: 0.64, currency: 'USD', text: '$0.64' },
+    fixedMmk: 5000,
+    price: { amount: 0.91, currency: 'USD', text: '5,000 Ks' },
     availability: { available: 50, sold: 142 },
     promotions: []
   },
   {
+    productId: 'outline_vpn_2m',
+    name: 'Outline VPN 2 Months · 200 GB - full warranty',
+    description: '• Private Shadowsocks (ss://) access key for Outline Client.\n• High-speed Singapore SGSEP server route.\n• Supports iOS, Android, Windows, macOS, and Linux.\n• 200 GB data · 60-day service period · full warranty.',
+    emoji: 'outline_vpn',
+    productType: 'account',
+    isCustomOutline: true,
+    outlineTotalGb: 200,
+    outlineDays: 60,
+    fixedMmk: 9500,
+    price: { amount: 1.73, currency: 'USD', text: '9,500 Ks' },
+    availability: { available: 40, sold: 96 },
+    promotions: []
+  },
+  {
     productId: 'outline_vpn_3m',
-    name: '🔥Outline VPN 3 Months (3 Devices · 600 GB) - full warranty',
-    description: '• Private Shadowsocks (ss://) access key for Outline Client.\n• High-speed Singapore / US / Japan routing.\n• Supports iOS, Android, Windows, macOS, and Linux.\n• Up to 3 Devices · 600 GB data · 90-day full warranty.',
+    name: 'Outline VPN 3 Months · 300 GB - full warranty',
+    description: '• Private Shadowsocks (ss://) access key for Outline Client.\n• High-speed Singapore SGSEP server route.\n• Supports iOS, Android, Windows, macOS, and Linux.\n• 300 GB data · 90-day service period · full warranty.',
     emoji: 'outline_vpn',
     productType: 'account',
     isCustomOutline: true,
-    outlineTotalGb: 600,
+    outlineTotalGb: 300,
     outlineDays: 90,
-    price: { amount: 1.73, currency: 'USD', text: '$1.73' },
+    fixedMmk: 14000,
+    price: { amount: 2.55, currency: 'USD', text: '14,000 Ks' },
     availability: { available: 35, sold: 89 },
-    promotions: []
-  },
-  {
-    productId: 'outline_vpn_6m',
-    name: 'Outline VPN 6 Months (3 Devices · 1.2 TB) - full warranty',
-    description: '• Private Shadowsocks (ss://) access key for Outline Client.\n• Dedicated low-latency server pool.\n• Up to 3 Devices · 1.2 TB data · 180-day full warranty.',
-    emoji: 'outline_vpn',
-    productType: 'account',
-    isCustomOutline: true,
-    outlineTotalGb: 1200,
-    outlineDays: 180,
-    price: { amount: 3.27, currency: 'USD', text: '$3.27' },
-    availability: { available: 25, sold: 41 },
-    promotions: []
-  },
-  {
-    productId: 'outline_vpn_12m',
-    name: '🔥Outline VPN 1 Year VIP (5 Devices · Unlimited) - full warranty',
-    description: '• 2 Private Shadowsocks (ss://) access keys for Outline Client.\n• Premium VIP multi-region server pool.\n• Up to 5 Devices · Fair-use unlimited bandwidth · 365-day full warranty.',
-    emoji: 'outline_vpn',
-    productType: 'account',
-    isCustomOutline: true,
-    outlineTotalGb: 0,
-    outlineDays: 365,
-    price: { amount: 5.82, currency: 'USD', text: '$5.82' },
-    availability: { available: 20, sold: 64 },
     promotions: []
   }
 ];
@@ -212,6 +202,8 @@ function usdToMmk(usd) {
 function classifyDelivery(p) {
   const pt = p.productType || 'account';
   const req = p.purchaseRequirements || {};
+  const text = `${p.name || ''} ${p.description || ''}`.toLowerCase();
+  const requiresIp = p.emoji === 'deepseek' || text.includes('ip registration') || text.includes('ip must be provided') || text.includes('registered ip');
   const avail = p.availability ? p.availability.available : null;
   // In Canboso API:
   // - 'account' products with available > 0 auto-complete and return credentials immediately.
@@ -240,7 +232,8 @@ function classifyDelivery(p) {
     deliveryLabel,
     deliveryHint,
     requiresEmail: !!(req.customerEmail || pt === 'slot'),
-    requiresAccounts: !!(req.customerAccounts || pt === 'upgrade_account'),
+    requiresIp,
+    requiresAccounts: !!((req.customerAccounts || pt === 'upgrade_account') && !requiresIp),
     requiresSlotMonths: !!(req.slotMonths || p.productId === 'slot_chatgpt_business'),
     allowedMonths: req.allowedMonths || (p.productId === 'slot_chatgpt_business' ? [1, 3, 6, 12] : null),
     quantityFixed: req.quantityFixed || (pt === 'slot' ? 1 : null)
@@ -734,7 +727,7 @@ function buildStructuredCatalog(rawProducts, metaInfo) {
     }
     const deliv = classifyDelivery(p);
     const usd = Number(p.price?.amount || 0);
-    const mmk = usdToMmk(usd);
+    const mmk = Number.isFinite(Number(p.fixedMmk)) ? Number(p.fixedMmk) : usdToMmk(usd);
     const image = p.image ? (p.image.startsWith('http') ? p.image : API_BASE + p.image) : null;
     const mm = translatePackageMm(p, deliv);
 
@@ -1041,6 +1034,25 @@ const server = http.createServer(async (req, res) => {
     try { return await handleTelegramWebhook(req, res); }
     catch { return sendJson(res, 500, { success: false }); }
   }
+  if (pathname === '/api/v1/products' && req.method === 'GET') {
+    if (!isAdminRequest(req)) return sendJson(res, 401, { success: false, message: 'Bearer API token required' });
+    try {
+      const raw = await getRawCatalog(u.searchParams.get('refresh') === '1');
+      return sendJson(res, 200, buildStructuredCatalog(raw.catalog.products || [], raw));
+    } catch (error) {
+      return sendJson(res, 503, { success: false, message: error.message });
+    }
+  }
+  if (pathname === '/api/v1/balance' && req.method === 'GET') {
+    if (!isAdminRequest(req)) return sendJson(res, 401, { success: false, message: 'Bearer API token required' });
+    return sendJson(res, 200, { success: true, balanceMmk: store.balanceMmk, currency: 'MMK' });
+  }
+  if (pathname === '/api/v1/orders' && req.method === 'GET') {
+    if (!isAdminRequest(req)) return sendJson(res, 401, { success: false, message: 'Bearer API token required' });
+    const orderCode = String(u.searchParams.get('orderCode') || '').trim();
+    const orders = orderCode ? store.orders.filter(order => order.orderCode === orderCode) : store.orders.slice(0, 100);
+    return sendJson(res, 200, { success: true, orders });
+  }
   if (pathname === '/api/catalog' && req.method === 'GET') {
     try {
       const force = u.searchParams.get('refresh') === '1';
@@ -1138,12 +1150,14 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (pathname === '/api/purchase' && req.method === 'POST') {
+  if ((pathname === '/api/purchase' || pathname === '/api/v1/purchase') && req.method === 'POST') {
+    if (pathname === '/api/v1/purchase' && !isAdminRequest(req)) return sendJson(res, 401, { success: false, message: 'Bearer API token required' });
     try {
       const body = await readBody(req);
       const productId = String(body.productId || '').trim();
       const quantity = Math.max(1, Math.min(20, parseInt(body.quantity || 1, 10)));
       const customerEmail = String(body.customerEmail || '').trim();
+      const customerIp = String(body.customerIp || '').trim();
       const customerAccounts = Array.isArray(body.customerAccounts)
         ? body.customerAccounts.map(s => String(s).trim()).filter(Boolean)
         : [];
@@ -1166,6 +1180,9 @@ const server = http.createServer(async (req, res) => {
       }
       if (pkg.requiresAccounts && customerAccounts.length < quantity) {
         return sendJson(res, 400, { success: false, message: `Please provide ${quantity} account identifier(s) for account upgrade.` });
+      }
+      if (pkg.requiresIp && !/^[0-9a-fA-F:.]{3,64}$/.test(customerIp)) {
+        return sendJson(res, 400, { success: false, message: 'A valid IPv4 or IPv6 address is required for this API package.' });
       }
 
       const totalMmk = pkg.mmk * quantity;
@@ -1206,6 +1223,7 @@ const server = http.createServer(async (req, res) => {
           totalMmk,
           totalUsd,
           customerEmail: customerEmail || null,
+          customerIp: customerIp || null,
           accounts: provisioned.map(x => ({ user: x.key, password: '', otherInfo: `${x.totalGb || 'Unlimited'} GB Outline Client access key` })),
           outlineClients: provisioned.map(({ key, ...client }) => client),
           createdAt: new Date().toISOString()
@@ -1235,6 +1253,7 @@ const server = http.createServer(async (req, res) => {
         };
         if (pkg.requiresEmail || cItem.email) apiPayload.customer_email = cItem.email;
         if (pkg.requiresAccounts && customerAccounts.length) apiPayload.customer_accounts = customerAccounts;
+        if (pkg.requiresIp) apiPayload.customer_ip = customerIp;
         if (pkg.requiresSlotMonths && slotMonths) apiPayload.slot_months = slotMonths;
 
         const upstream = await canbosoRequest('POST', '/api/v2/telegram-buyer/purchase', apiPayload, {
@@ -1267,6 +1286,7 @@ const server = http.createServer(async (req, res) => {
           totalMmk,
           totalUsd,
           customerEmail: emailsList.join(', ') || null,
+          customerIp: customerIp || null,
           customerAccounts: customerAccounts.length ? customerAccounts : null,
           accounts: allAccounts,
           createdAt: new Date().toISOString(),
@@ -1299,6 +1319,7 @@ const server = http.createServer(async (req, res) => {
           totalMmk,
           totalUsd,
           customerEmail: customerEmail || null,
+          customerIp: customerIp || null,
           customerAccounts: customerAccounts.length ? customerAccounts : null,
           accounts: isManual ? [] : [{
             user: `user_${crypto.randomBytes(3).toString('hex')}@exabyte.store`,
