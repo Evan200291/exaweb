@@ -1,0 +1,7 @@
+.env
+.env.*
+!.env.example
+data/store.json
+node_modules/
+*.log
+*.zip

@@ -1,0 +1,735 @@
+/* Exabyte Digital Store — Live Web Client
+   Fetches live products & package details from /api/catalog (Canboso API v2 + Outline VPN),
+   calculates prices at $1 = 5,500 Ks, distinguishes Instant vs Slot/Upgrade fulfillment,
+   and processes live purchases & screenshot-verified wallet top-ups. */
+
+const GROUPS = { vpn: 'VPN', ai: 'AI Tools', design: 'Design & Video', stream: 'Streaming', work: 'Productivity', learn: 'Learning' };
+const METHODS = [
+  ['KBZPay', '#0b4ea2', 'KBZ', '09 123 456 789'],
+  ['WavePay', '#ffcc00', 'W', '09 987 654 321'],
+  ['AYA Pay', '#c8102e', 'AYA', '09 222 333 444'],
+  ['CB Pay', '#00539b', 'CB', '0001 2345 6789 0001']
+];
+
+const OUTLINE_SVG = '<svg viewBox="0 0 24 24" style="stroke:none"><path fill="#fff" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4.2a5.8 5.8 0 1 1 0 11.6 5.8 5.8 0 0 1 0-11.6z"/><circle cx="12" cy="12" r="2.6" fill="#fff"/></svg>';
+const OPENAI_SVG = '<svg viewBox="0 0 24 24" style="stroke:none"><path fill="#fff" d="M22.28 9.82a5.98 5.98 0 0 0-.52-4.91 6.05 6.05 0 0 0-6.51-2.9A6.07 6.07 0 0 0 4.98 4.18a5.98 5.98 0 0 0-4 2.9 6.05 6.05 0 0 0 .74 7.1 5.98 5.98 0 0 0 .51 4.91 6.05 6.05 0 0 0 6.52 2.9A5.98 5.98 0 0 0 13.26 24a6.06 6.06 0 0 0 5.77-4.21 5.99 5.99 0 0 0 4-2.9 6.06 6.06 0 0 0-.75-7.07zm-9.02 12.61a4.48 4.48 0 0 1-2.88-1.04l.14-.08 4.78-2.76a.8.8 0 0 0 .39-.68v-6.74l2.02 1.17c.02.01.03.03.03.05v5.58a4.5 4.5 0 0 1-4.48 4.5zm-9.66-4.13a4.47 4.47 0 0 1-.54-3.01l.14.09 4.78 2.76a.77.77 0 0 0 .78 0l5.84-3.37v2.33a.08.08 0 0 1-.03.06l-4.83 2.79a4.5 4.5 0 0 1-6.14-1.65zM2.34 7.9a4.49 4.49 0 0 1 2.37-1.97V11.6a.77.77 0 0 0 .39.68l5.81 3.35-2.02 1.17a.08.08 0 0 1-.07 0l-4.83-2.79A4.5 4.5 0 0 1 2.34 7.9zm16.6 3.86-5.84-3.38 2.02-1.16a.08.08 0 0 1 .07 0l4.83 2.79a4.49 4.49 0 0 1-.68 8.1v-5.67a.79.79 0 0 0-.4-.68zm2.01-3.02-.14-.09-4.77-2.78a.78.78 0 0 0-.79 0L9.41 9.23V6.9a.07.07 0 0 1 .03-.06l4.83-2.79a4.5 4.5 0 0 1 6.68 4.66zM8.31 12.86l-2.02-1.16a.08.08 0 0 1-.03-.06V6.07a4.5 4.5 0 0 1 7.38-3.45l-.14.08-4.78 2.76a.8.8 0 0 0-.39.68zm1.1-2.37 2.6-1.5 2.6 1.5v3l-2.6 1.5-2.6-1.5z"/></svg>';
+
+const STATE = {
+  loaded: false,
+  rateMmk: 5500,
+  source: 'live',
+  fetchedAt: null,
+  totalProducts: 0,
+  categories: [],
+  bal: 0,
+  buys: [],
+  tops: [],
+  supplierWallet: null
+};
+
+/* ---------------- Helpers ---------------- */
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => Number(n || 0).toLocaleString('en-US');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const linkify = s => esc(s).replace(/https?:\/\/[^\s<>"']+/g, u => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+
+const ICON = {
+  bolt: '<svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>',
+  clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  shield: '<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
+  chat: '<svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>',
+  wallet: '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/></svg>',
+  arrow: '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+  left: '<svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>',
+  up: '<svg viewBox="0 0 24 24"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg>',
+  check: '<svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>',
+  search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>',
+  bag: '<svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>'
+};
+
+function iconImg(cat, colorHex) {
+  if (cat.svg === 'outline') return OUTLINE_SVG;
+  if (cat.svg === 'openai') return OPENAI_SVG;
+  if (cat.slug) {
+    const col = colorHex || (cat.darkText ? '111111' : 'ffffff');
+    return `<img src="https://cdn.simpleicons.org/${cat.slug}/${col}" alt="" loading="lazy" onerror="this.remove()">`;
+  }
+  return '';
+}
+const logo = (cat, cls = '') => `<span class="logo ${cat.darkText ? 'dk' : ''} ${cls}" style="--c:${cat.color}">${iconImg(cat)}<b>${esc(cat.name[0])}</b></span>`;
+const centerMark = cat => `<span class="big">${iconImg(cat, 'ffffff')}<b>${esc(cat.name[0])}</b></span>`;
+
+function setWalletUI(amount) {
+  STATE.bal = Number(amount || 0);
+  const el = document.getElementById('bal');
+  if (el) el.textContent = fmt(STATE.bal);
+}
+
+function toast(m) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = m;
+  document.body.append(t);
+  setTimeout(() => t.remove(), 2800);
+}
+
+function modal(html, cls = '') {
+  const m = document.createElement('div');
+  m.className = 'modal';
+  m.innerHTML = `<div class="mp ${cls}" role="dialog" aria-modal="true" tabindex="-1">${html}</div>`;
+  m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) m.remove(); });
+  document.body.append(m);
+  m.querySelector('.mp').focus();
+  return m;
+}
+
+/* ---------------- API Data Sync ---------------- */
+async function loadBackendData(forceCatalog = false) {
+  const [catRes, stRes] = await Promise.all([
+    fetch(`/api/catalog${forceCatalog ? '?refresh=1' : ''}`).then(r => r.json()),
+    fetch('/api/state').then(r => r.json())
+  ]);
+  if (catRes && catRes.success) {
+    STATE.rateMmk = catRes.rateMmk || 5500;
+    STATE.source = catRes.source;
+    STATE.fetchedAt = catRes.fetchedAt;
+    STATE.totalProducts = catRes.totalProducts;
+    STATE.categories = catRes.categories || [];
+  }
+  if (stRes && stRes.success) {
+    setWalletUI(stRes.balanceMmk);
+    STATE.buys = stRes.orders || [];
+    STATE.tops = stRes.topups || [];
+  }
+  STATE.loaded = true;
+}
+
+/* ---------------- Banner (2 slides + safe zones) ---------------- */
+const SLIDES = [
+  { href: '#/p/outline-vpn', alt: 'Outline VPN — Private, fast, borderless. Access keys from 3,550 Ks', d: 'assets/banners/slide1-desktop.webp', m: 'assets/banners/slide1-mobile.webp' },
+  { href: '#/topup', alt: 'Premium apps — Top up once, buy anytime', d: 'assets/banners/slide2-desktop.webp', m: 'assets/banners/slide2-mobile.webp' }
+];
+const T = (x, y, s, w, f, txt, extra = '') => `<text x="${x}" y="${y}" font-family="Inter,Segoe UI,sans-serif" font-size="${s}" font-weight="${w}" fill="${f}" ${extra}>${txt}</text>`;
+const bgDefs = (id, a, b, gx, gy, glow) => `<defs><linearGradient id="${id}b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient><radialGradient id="${id}g" cx="${gx}" cy="${gy}" r=".55"><stop offset="0" stop-color="${glow}" stop-opacity=".55"/><stop offset="1" stop-color="${glow}" stop-opacity="0"/></radialGradient><pattern id="${id}p" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60 0H0V60" fill="none" stroke="#fff" stroke-opacity=".045"/></pattern></defs>`;
+const bg = id => `<rect width="100%" height="100%" fill="url(#${id}b)"/><rect width="100%" height="100%" fill="url(#${id}p)"/><rect width="100%" height="100%" fill="url(#${id}g)"/>`;
+const ring = (cx, cy, R) => `<g transform="translate(${cx} ${cy})"><circle r="${R * 1.55}" fill="none" stroke="#5eead4" stroke-opacity=".12" stroke-width="2"/><circle r="${R * 1.25}" fill="none" stroke="#5eead4" stroke-opacity=".22" stroke-width="2" stroke-dasharray="6 10"/><circle r="${R}" fill="none" stroke="#fff" stroke-width="${R * .3}"/><circle r="${R * .3}" fill="#fff"/></g>`;
+const tiles = (x0, y0, cols, rows, sz, gap) => {
+  const L = [[null, '#10a37f'], ['netflix', '#e50914'], ['spotify', '#1db954'], ['anthropic', '#d97757'], ['youtube', '#ff0000'], ['nordvpn', '#4687ff'], ['google', '#1a73e8'], ['duolingo', '#58cc02'], ['expressvpn', '#da3940'], ['grammarly', '#15c39a'], ['zoom', '#0b5cff'], ['telegram', '#2aabee']];
+  let o = ''; for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const [s, col] = L[(r * cols + c) % L.length], x = x0 + c * (sz + gap), y = y0 + r * (sz + gap) + (c % 2 ? sz * .35 : 0);
+    o += `<rect x="${x}" y="${y}" width="${sz}" height="${sz}" rx="${sz * .2}" fill="${col}"/>` + (s ? `<image href="https://cdn.simpleicons.org/${s}/ffffff" x="${x + sz * .25}" y="${y + sz * .25}" width="${sz * .5}" height="${sz * .5}"/>` : `<g transform="translate(${x + sz * .22} ${y + sz * .22}) scale(${sz * .56 / 24})">${OPENAI_SVG.replace(/<svg[^>]*>|<\/svg>/g, '')}</g>`);
+  } return o;
+};
+function art(i, mobile) {
+  const W = mobile ? 1080 : 1920, H = mobile ? 810 : 1080, id = `s${i}${mobile ? 'm' : 'd'}`;
+  let body;
+  if (i === 0) body = mobile
+    ? bgDefs(id, '#04121a', '#0b3b3a', .8, .7, '#14b8a6') + bg(id) + ring(860, 560, 145) +
+      T(90, 190, 26, 800, '#5eead4', 'OUTLINE VPN', 'letter-spacing="7"') + T(90, 290, 84, 900, '#fff', 'Private. Fast.') + T(90, 380, 84, 900, '#fff', 'Borderless.') +
+      T(90, 450, 30, 500, '#c4d0e6', 'Access keys from 3,550 Ks') + `<rect x="90" y="500" width="360" height="84" rx="8" fill="#14b8a6"/>` + T(270, 553, 28, 800, '#042a26', 'GET ACCESS KEY', 'text-anchor="middle"')
+    : bgDefs(id, '#04121a', '#0b3b3a', .75, .5, '#14b8a6') + bg(id) + ring(1440, 540, 250) +
+      T(200, 400, 30, 800, '#5eead4', 'OUTLINE VPN', 'letter-spacing="8"') + T(200, 510, 104, 900, '#fff', 'Private. Fast.') + T(200, 620, 104, 900, '#fff', 'Borderless.') +
+      T(200, 700, 36, 500, '#c4d0e6', 'Instant ss:// access keys · from 3,550 Ks') + `<rect x="200" y="760" width="400" height="88" rx="8" fill="#14b8a6"/>` + T(400, 816, 30, 800, '#042a26', 'GET ACCESS KEY', 'text-anchor="middle"');
+  else body = mobile
+    ? bgDefs(id, '#07102a', '#1a3fae', .85, .4, '#5c8cff') + bg(id) + tiles(770, 170, 2, 3, 105, 22) +
+      T(90, 190, 26, 800, '#9fc0ff', 'LIVE API STORE', 'letter-spacing="7"') + T(90, 290, 84, 900, '#fff', 'Top up once.') + T(90, 380, 84, 900, '#fff', 'Buy anytime.') +
+      T(90, 450, 30, 500, '#c4d0e6', 'ChatGPT · Claude · Canva · VPN') + `<rect x="90" y="500" width="360" height="84" rx="8" fill="#fff"/>` + T(270, 553, 28, 800, '#0b1a30', 'TOP UP WALLET', 'text-anchor="middle"')
+    : bgDefs(id, '#07102a', '#1a3fae', .75, .45, '#5c8cff') + bg(id) + tiles(1080, 250, 4, 3, 150, 28) +
+      T(200, 400, 30, 800, '#9fc0ff', 'LIVE API STORE', 'letter-spacing="8"') + T(200, 510, 104, 900, '#fff', 'Top up once.') + T(200, 620, 104, 900, '#fff', 'Buy anytime.') +
+      T(200, 700, 36, 500, '#c4d0e6', '180+ live packages · Instant & Official Slot/Upgrade') + `<rect x="200" y="760" width="400" height="88" rx="8" fill="#fff"/>` + T(400, 816, 30, 800, '#0b1a30', 'TOP UP WALLET', 'text-anchor="middle"');
+  return `<svg class="${mobile ? 'art-m' : 'art-d'}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" style="stroke:none" aria-hidden="true">${body}</svg>`;
+}
+const bannerHTML = () => `<section class="banner" id="banner" aria-roledescription="carousel" aria-label="Featured">
+  <div class="track">${SLIDES.map((s, i) => `<a class="slide ${i ? '' : 'on'}" href="${s.href}" aria-label="${esc(s.alt)}">
+    ${art(i, false)}${art(i, true)}
+    <picture><source media="(min-width:768px)" srcset="${s.d}"><img src="${s.m}" alt="${esc(s.alt)}" onerror="this.parentNode.remove()"></picture>
+    <div class="safe"><i class="cv"></i><i class="sf"></i><i class="dz"></i><em class="lbl"></em></div></a>`).join('')}</div>
+  <button class="barrow l" data-d="-1" aria-label="Previous slide">${ICON.left}</button><button class="barrow r" data-d="1" aria-label="Next slide">${ICON.arrow}</button>
+  <div class="dots" role="tablist">${SLIDES.map((_, i) => `<button data-i="${i}" class="${i ? '' : 'on'}" aria-label="Slide ${i + 1}"></button>`).join('')}</div></section>`;
+let bIdx = 0, bTimer;
+function goSlide(i) {
+  bIdx = (i + SLIDES.length) % SLIDES.length;
+  $$('.slide').forEach((s, k) => s.classList.toggle('on', k === bIdx));
+  $$('.dots button').forEach((d, k) => d.classList.toggle('on', k === bIdx));
+}
+function initBanner() {
+  const b = $('#banner'); if (!b) return;
+  const start = () => { clearInterval(bTimer); bTimer = setInterval(() => goSlide(bIdx + 1), 5000); };
+  b.addEventListener('click', e => { const t = e.target.closest('[data-d],[data-i]'); if (!t) return; e.preventDefault(); goSlide(t.dataset.i != null ? +t.dataset.i : bIdx + +t.dataset.d); start(); });
+  let x0 = null;
+  b.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+  b.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) { goSlide(bIdx + (dx < 0 ? 1 : -1)); start(); } x0 = null; });
+  b.addEventListener('mouseenter', () => clearInterval(bTimer)); b.addEventListener('mouseleave', start);
+  const lbl = () => $$('.safe .lbl').forEach(l => l.textContent = matchMedia('(min-width:768px)').matches ? 'DESKTOP 1920×1080 · SAFE 1680×880' : 'MOBILE 1080×810 · SAFE 960×650');
+  const szt = $('#szt'); if (szt) szt.onclick = () => { b.classList.toggle('sz'); lbl(); };
+  start();
+}
+
+/* ---------------- Card & Section Components ---------------- */
+function deliveryStatusPill(cat) {
+  if (!cat.anyInStock) return `<span class="inst out">${ICON.clock}Out of Stock</span>`;
+  if (cat.hasInstant && cat.hasManual) return `<span class="inst">${ICON.bolt}Instant &amp; Manual</span>`;
+  if (cat.hasInstant) return `<span class="inst">${ICON.bolt}Instant</span>`;
+  return `<span class="inst man">${ICON.clock}Slot / Upgrade</span>`;
+}
+
+const cardHTML = cat => `<a class="card" href="#/p/${cat.id}" style="--c:${cat.color}">
+  <div class="media">${centerMark(cat)}${cat.hot ? '<span class="tag">HOT</span>' : ''}${cat.isNew ? `<span class="tag new" style="${cat.hot ? 'left:auto;right:8px' : ''}">NEW</span>` : (!cat.anyInStock ? `<span class="tag out" style="${cat.hot ? 'left:auto;right:8px' : ''}">SOLD OUT</span>` : '')}${logo(cat)}</div>
+  <div class="ct"><h4>${esc(cat.name)}</h4>${deliveryStatusPill(cat)}<span class="from">From <b>${fmt(cat.minMmk)}</b> Ks · ${cat.packages.length} pkg${cat.packages.length > 1 ? 's' : ''}</span></div></a>`;
+
+const section = (title, list, href) => `<section class="sec"><div class="sh"><span class="st">${title}</span><a class="more" href="${href}">See More ${ICON.arrow}</a></div><div class="grid">${list.map(cardHTML).join('')}</div></section>`;
+
+/* ---------------- Views ---------------- */
+function vHome() {
+  const cats = STATE.categories;
+  const pickIds = ['outline-vpn', 'chatgpt', 'claude', 'canva', 'google-one', 'netflix', 'capcut', 'codex', 'spotify', 'youtube'];
+  const featured = pickIds.map(id => cats.find(c => c.id === id)).filter(Boolean);
+  return `<div class="home">
+  <section class="hero-row">${bannerHTML()}
+    <aside class="hero">
+      <div><span class="eyebrow"><i></i> Myanmar's digital marketplace</span><h1>Everything digital.<br><em>Ready when you are.</em></h1><p>Premium apps, AI tools and secure VPN access with transparent MMK pricing and human support.</p></div>
+      <div class="hstats"><div><b>${STATE.totalProducts}</b><span>Packages</span></div><div><b>${cats.length}</b><span>Categories</span></div><div><b>24/7</b><span>Support</span></div></div>
+      <div class="acts2"><a class="btn pri lg" href="#/products">${ICON.bag} Browse All (${STATE.totalProducts})</a><a class="btn lg" href="#/topup">${ICON.wallet} Top Up Wallet</a></div>
+    </aside>
+  </section>
+  <button class="szt" id="szt">Show banner safe zones</button>
+  <div class="mhero"><a class="btn pri" href="#/products">${ICON.bag} Browse (${STATE.totalProducts})</a><a class="btn" href="#/topup">${ICON.wallet} Top Up</a></div>
+  ${section('Popular Categories', featured, '#/products')}
+  ${section('VPN & Security', cats.filter(p => p.group === 'vpn'), '#/products?g=vpn')}
+  ${section('AI Tools & APIs', cats.filter(p => p.group === 'ai'), '#/products?g=ai')}
+  ${section('Design & Creative', cats.filter(p => p.group === 'design'), '#/products?g=design')}
+  ${section('Streaming & Media', cats.filter(p => p.group === 'stream'), '#/products?g=stream')}
+  <section class="sec"><div class="trust">
+    <div><i>${ICON.bolt}</i><span><b>Instant &amp; Manual</b><span>Live stock &amp; fulfillment type per package</span></span></div>
+    <div><i>${ICON.shield}</i><span><b>Full Package Details</b><span>Exact rules &amp; warranty per package</span></span></div>
+    <div><i>${ICON.wallet}</i><span><b>Local MMK Payments</b><span>KBZPay, WavePay, AYA &amp; CB Pay</span></span></div>
+    <div><i>${ICON.chat}</i><span><b>Telegram Support</b><span>24/7 order &amp; warranty help</span></span></div>
+  </div></section></div>`;
+}
+
+let catFilter = 'all', q = '';
+function vProducts(params) {
+  if (params.get('g')) catFilter = params.get('g');
+  return `<div class="ph"><div class="crumb"><a href="#/">Home</a> / Products</div><h1>All Products (${STATE.categories.length} Categories · ${STATE.totalProducts} Packages)</h1><p>Select any category to view its packages, stock, warranty, and full description.</p></div>
+  <section class="sec" style="margin-top:12px"><div class="fbar">
+    <div class="tabs">${Object.entries({ all: 'All', ...GROUPS }).map(([k, v]) => `<button data-tab="${k}" class="${k === catFilter ? 'on' : ''}">${v}</button>`).join('')}</div>
+    <label class="search">${ICON.search}<input id="q" type="search" placeholder="Search categories or packages..." value="${esc(q)}"></label>
+  </div><div class="grid wide" id="cards"></div></section>`;
+}
+function drawCards() {
+  const term = q.trim().toLowerCase();
+  const list = STATE.categories.filter(c => {
+    if (catFilter !== 'all' && c.group !== catFilter) return false;
+    if (!term) return true;
+    return c.name.toLowerCase().includes(term) || c.packages.some(p => p.name.toLowerCase().includes(term) || p.description.toLowerCase().includes(term));
+  });
+  const el = $('#cards');
+  if (el) el.innerHTML = list.length ? list.map(cardHTML).join('') : '<p class="empty" style="grid-column:1/-1">No matching products found.</p>';
+}
+
+let curCat = null, selIdx = 0, curQty = 1;
+function vProduct(id, params) {
+  const cat = STATE.categories.find(x => x.id === id);
+  if (!cat) return vNotFound();
+  curCat = cat;
+  const firstInStock = cat.packages.findIndex(x => x.inStock);
+  selIdx = params.has('pk') ? +params.get('pk') : (firstInStock >= 0 ? firstInStock : 0);
+  curQty = 1;
+
+  return `<div class="pp" style="--c:${cat.color}">
+  <aside class="info">
+    <div class="cover">${centerMark(cat)}</div>
+    <div class="ibody">${logo(cat)}<h1>${esc(cat.name)}</h1>
+      <div class="badges" id="pbadges"></div>
+      <ul class="feat" id="pmeta"></ul>
+    </div>
+  </aside>
+  <div class="steps">
+    <section class="scard">
+      <div class="shd"><span class="num">1</span><h2>Select Package</h2><small>${cat.packages.length} package${cat.packages.length > 1 ? 's' : ''}</small></div>
+      <div class="pkgs" id="pkgs">${cat.packages.map((k, i) => {
+        const stkText = k.available === null ? '📦 ∞' : (k.available > 0 ? `📦 ${k.available}` : '❌ 0');
+        return `<button class="pkg ${i === selIdx ? 'on' : ''} ${!k.inStock ? 'out' : ''}" data-pk="${i}">
+          ${logo(cat)}
+          <b>${esc(k.name)}</b>
+          <div class="meta">
+            <span class="pill ${k.isInstant ? '' : 'man'}">${k.isInstant ? '⚡ Instant' : (k.productType === 'slot' ? '📩 Slot Invite' : '🛠️ Upgrade')}</span>
+            <span class="pill ${k.inStock ? 'stk' : 'out'}">${stkText}</span>
+          </div>
+          <span class="pr">${fmt(k.mmk)} <span>Ks</span></span>
+        </button>`;
+      }).join('')}</div>
+    </section>
+    <section class="pdetail" id="pkgdetail"></section>
+    <section class="scard">
+      <div class="shd"><span class="num">2</span><h2 id="step2title">Order Input</h2><small id="step2req"></small></div>
+      <div id="reqfields"></div>
+    </section>
+    <section class="paybar stick" id="paybar"></section>
+  </div></div>
+  ${section('Related Categories', STATE.categories.filter(x => x.group === cat.group && x.id !== cat.id).slice(0, 5), '#/products?g=' + cat.group)}`;
+}
+
+function getParsedLines(id) {
+  const el = $(id);
+  if (!el) return [];
+  return el.value.split(/[\r\n,]+/).map(s => s.trim()).filter(Boolean);
+}
+
+function updateSelectedPackageDetails() {
+  if (!curCat) return;
+  const k = curCat.packages[selIdx];
+  if (!k) return;
+
+  const stockLabel = k.available === null ? '∞ accounts' : `${k.available} accounts`;
+  const maxStock = typeof k.available === 'number' && k.available > 0 ? k.available : 50;
+  if (curQty > maxStock) curQty = Math.max(1, maxStock);
+
+  // Left sidebar summary
+  const badgesEl = $('#pbadges');
+  if (badgesEl) {
+    badgesEl.innerHTML = `
+      <span class="badge ${k.isInstant ? '' : 'w'}">${k.isInstant ? ICON.bolt : ICON.clock} ${esc(k.deliveryLabel)}</span>
+      <span class="badge b">${ICON.shield} ${esc(k.productType.toUpperCase())}</span>`;
+  }
+  const metaEl = $('#pmeta');
+  if (metaEl) {
+    metaEl.innerHTML = `
+      <li><b>Selected:</b> ${esc(k.name)}</li>
+      <li><b>Price:</b> ${fmt(k.mmk)} Ks</li>
+      <li><b>Stock:</b> ${esc(stockLabel)} · <b>Sold:</b> ${fmt(k.sold)}</li>
+      <li><b>Fulfillment:</b> ${esc(k.deliveryHint)}</li>`;
+  }
+
+  // Full Package Details Card (matches exact Telegram bot output per package)
+  const pdEl = $('#pkgdetail');
+  if (pdEl) {
+    const promos = (k.promotions || []).map(pr => `🎁 Promotion: Buy ${pr.minQty} get ${pr.bonusQty ? `${pr.bonusQty} bonus` : `${pr.percent}% off`}`).join(' · ');
+    pdEl.innerHTML = `
+      <div class="pd-head">
+        ${logo(curCat)}
+        <div>
+          <h3>${esc(k.name)}</h3>
+          <span class="inst ${k.isInstant ? '' : 'man'}">${k.isInstant ? ICON.bolt : ICON.clock} ${esc(k.deliveryLabel)}</span>
+        </div>
+      </div>
+      <div class="pd-stats">
+        <div class="pd-stat"><small>💰 Price</small><b>${fmt(k.mmk)} Ks</b></div>
+        <div class="pd-stat"><small>📦 Stock</small><b>${esc(stockLabel)}</b></div>
+        <div class="pd-stat"><small>📊 Sold</small><b>${fmt(k.sold)} accounts</b></div>
+        <div class="pd-stat"><small>⚡ Type</small><b>${esc(k.productType)}</b></div>
+      </div>
+      ${promos ? `<div class="pd-promo">${esc(promos)}</div>` : ''}
+      <div class="pd-desc-lbl">💎 Package Description &amp; Warranty Policy</div>
+      <div class="pd-desc">${linkify(k.description || `${k.name}\n\n${k.deliveryHint}`)}</div>`;
+  }
+
+  // Step 2: Dynamic Order Input (matches exact Telegram bot prompt per package type)
+  const titleEl = $('#step2title');
+  const reqNote = $('#step2req');
+  const rf = $('#reqfields');
+  if (!rf) return;
+
+  if (k.requiresEmail) {
+    // Slot product: "📧 Please enter email(s) to receive slot (one email per line). 💡 Quantity will be auto-calculated based on the number of emails you enter."
+    if (titleEl) titleEl.textContent = 'Enter Email(s) to Receive Slot';
+    if (reqNote) reqNote.textContent = 'Required · Auto-calculates quantity';
+    const monthsSelect = (k.requiresSlotMonths && Array.isArray(k.allowedMonths))
+      ? `<div style="margin-bottom:14px"><label class="fld"><span>Slot Duration (Months) *</span><select id="f_months" style="width:100%;background:transparent;border:0;border-bottom:1px solid var(--bd2);padding:10px 0;font-size:15px;color:#fff">${k.allowedMonths.map(m => `<option value="${m}" style="background:var(--bg1)">${m} Month${m > 1 ? 's' : ''}</option>`).join('')}</select></label></div>`
+      : '';
+    rf.innerHTML = `${monthsSelect}
+      <label class="fld">
+        <span>📧 Please enter email(s) to receive slot (one email per line) *</span>
+        <textarea id="f_emails" rows="3" placeholder="user1@gmail.com&#10;user2@gmail.com"></textarea>
+      </label>
+      <p class="help" style="margin-top:8px">💡 Quantity will be auto-calculated based on the number of emails you enter (<b id="em_count">1</b> slot${curQty > 1 ? 's' : ''}).</p>`;
+    const ta = $('#f_emails');
+    if (ta) {
+      ta.oninput = () => {
+        const list = getParsedLines('#f_emails');
+        curQty = Math.max(1, Math.min(maxStock, list.length || 1));
+        const ec = $('#em_count'); if (ec) ec.textContent = curQty;
+        drawPay();
+      };
+    }
+  } else if (k.requiresAccounts) {
+    // Upgrade Account product: enter account(s) one per line
+    if (titleEl) titleEl.textContent = 'Enter Account(s) to Upgrade';
+    if (reqNote) reqNote.textContent = 'Required · 1 account per line';
+    rf.innerHTML = `
+      <label class="fld">
+        <span>🛠️ Enter account identifier(s) for upgrade (one per line — Email or Email | Password) *</span>
+        <textarea id="f_accounts" rows="3" placeholder="account1@gmail.com&#10;account2@gmail.com"></textarea>
+      </label>
+      <p class="help" style="margin-top:8px">💡 Quantity is auto-calculated from the number of accounts entered (<b id="ac_count">1</b>).</p>`;
+    const ta = $('#f_accounts');
+    if (ta) {
+      ta.oninput = () => {
+        const list = getParsedLines('#f_accounts');
+        curQty = Math.max(1, Math.min(maxStock, list.length || 1));
+        const ac = $('#ac_count'); if (ac) ac.textContent = curQty;
+        drawPay();
+      };
+    }
+  } else {
+    // Instant Account product: "✏️ Enter quantity to buy (1-N):"
+    if (titleEl) titleEl.textContent = `Enter Quantity to Buy (1–${maxStock})`;
+    if (reqNote) reqNote.textContent = 'Instant Delivery';
+    rf.innerHTML = `<div class="fields two">
+      <div class="fld"><span>✏️ Quantity to buy (1–${maxStock})</span>
+        <div class="qrow"><button type="button" class="qbtn" data-q="-1">−</button><input id="f_qty" class="qin" type="number" min="1" max="${maxStock}" value="${curQty}"><button type="button" class="qbtn" data-q="1">+</button></div>
+      </div>
+      <label class="fld"><span>Telegram / Email (Optional backup)</span><input id="f_email" type="text" placeholder="@username or email" autocomplete="off"></label>
+    </div>
+    <p class="help" style="margin-top:8px">⚡ Account credentials / JSON keys are delivered immediately on screen and saved in History.</p>`;
+    const qin = $('#f_qty');
+    if (qin) {
+      qin.oninput = () => {
+        curQty = Math.max(1, Math.min(maxStock, parseInt(qin.value || 1, 10)));
+        drawPay();
+      };
+    }
+  }
+
+  drawPay();
+}
+
+function drawPay() {
+  if (!curCat) return;
+  const k = curCat.packages[selIdx];
+  const total = k.mmk * curQty;
+  const short = total - STATE.bal;
+  const pb = $('#paybar');
+  if (!pb) return;
+
+  let actionBtn = '';
+  if (!k.inStock) {
+    actionBtn = `<button class="btn lg block" disabled>OUT OF STOCK</button>`;
+  } else if (short > 0) {
+    actionBtn = `<a class="btn pri lg block" href="#/topup?need=${short}">${ICON.wallet} Top Up (+${fmt(short)} Ks)</a>`;
+  } else {
+    actionBtn = `<button class="btn pri lg block" data-act="confirm">BUY NOW</button>`;
+  }
+
+  pb.innerHTML = `<div><h3>Selected (${k.isInstant ? 'Instant Delivery' : esc(k.deliveryLabel)})</h3>
+    <div class="sel">${esc(k.name)} × ${curQty}
+      <small>${!k.inStock ? '<span class="warn">Out of stock</span>' : (short > 0 ? `<span class="warn">Wallet short by ${fmt(short)} Ks (Balance: ${fmt(STATE.bal)} Ks)</span>` : `Wallet Balance: ${fmt(STATE.bal)} Ks`)}</small>
+    </div></div>
+    <div class="tot"><span>Total Payment</span><b>${fmt(total)} Ks</b></div>
+    ${actionBtn}`;
+}
+
+function confirmBuy() {
+  const k = curCat.packages[selIdx];
+  const slotMonths = $('#f_months') ? +$('#f_months').value : undefined;
+  let emailVal = ($('#f_email')?.value || '').trim();
+  let emailList = [];
+  let accList = [];
+
+  if (k.requiresEmail) {
+    emailList = getParsedLines('#f_emails');
+    const invalid = emailList.find(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    if (!emailList.length || invalid) {
+      $('#f_emails')?.focus();
+      return toast(invalid ? `Invalid email: ${invalid}` : 'Please enter at least one valid email to receive the slot.');
+    }
+    curQty = emailList.length;
+    emailVal = emailList[0];
+  } else if (k.requiresAccounts) {
+    accList = getParsedLines('#f_accounts');
+    if (!accList.length) {
+      $('#f_accounts')?.focus();
+      return toast('Please enter your account identifier(s) to upgrade.');
+    }
+    curQty = accList.length;
+  }
+
+  const total = k.mmk * curQty;
+  const m = modal(`<h3>Confirm Purchase</h3><p>${esc(k.deliveryHint)}</p>
+    <div class="msum">
+      <div class="mrow"><span>Package</span><b>${esc(k.name)}</b></div>
+      <div class="mrow"><span>Fulfillment</span><b>${esc(k.deliveryLabel)}</b></div>
+      <div class="mrow"><span>Quantity</span><b>${curQty}</b></div>
+      ${emailList.length ? `<div class="mrow"><span>Slot Email(s)</span><b>${esc(emailList.join(', '))}</b></div>` : ''}
+      ${accList.length ? `<div class="mrow"><span>Upgrade Account(s)</span><b>${esc(accList.join(', '))}</b></div>` : ''}
+      <div class="mrow"><span>Balance After</span><b>${fmt(STATE.bal - total)} Ks</b></div>
+      <div class="mrow t"><span>Total Payment</span><b>${fmt(total)} Ks</b></div>
+    </div>
+    <div class="macts"><button class="btn lg" data-x>Cancel</button><button class="btn pri lg" id="ok">Confirm &amp; Pay</button></div>`);
+  m.querySelector('#ok').onclick = () => {
+    m.remove();
+    doBuy({
+      productId: k.productId,
+      quantity: curQty,
+      customerEmail: emailVal,
+      customerEmails: emailList,
+      customerAccounts: accList,
+      slotMonths
+    });
+  };
+}
+
+async function doBuy(payload) {
+  try {
+    const res = await fetch('/api/purchase', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, allowSandboxFallback: true })
+    }).then(r => r.json());
+
+    if (!res.success) return toast(res.message || 'Purchase failed');
+    setWalletUI(res.balanceMmk);
+    STATE.buys.unshift(res.order);
+    drawPay();
+    showOrder(res.order, true);
+  } catch (e) {
+    toast('Network error while processing purchase');
+  }
+}
+
+function formatOrderCredentials(o) {
+  if (Array.isArray(o.accounts) && o.accounts.length) {
+    return o.accounts.map((a, idx) => {
+      const lines = [];
+      if (o.accounts.length > 1) lines.push(`--- Account #${idx + 1} ---`);
+      if (a.user) lines.push(a.password ? `User: ${a.user}` : a.user);
+      if (a.password) lines.push(`Pass: ${a.password}`);
+      if (a.verifyEmail) lines.push(`Verify Email: ${a.verifyEmail}`);
+      if (a.expiryText) lines.push(`Expiry: ${a.expiryText}`);
+      if (a.otherInfo) lines.push(`Info: ${a.otherInfo}`);
+      return lines.join('\n');
+    }).join('\n\n');
+  }
+  if (o.deliveryMode === 'slot') {
+    return `Status: ${o.fulfillmentStatus || 'waiting_seller'}\nSlot Invitation Email: ${o.customerEmail || 'Submitted'}\nNote: Admin will send the invitation link to your email shortly.`;
+  }
+  if (o.deliveryMode === 'upgrade') {
+    return `Status: ${o.fulfillmentStatus || 'waiting_seller'}\nUpgrade Account(s): ${(o.customerAccounts || []).join(', ')}\nNote: Supplier has received your order and is upgrading your account.`;
+  }
+  return o.code || 'Order recorded.';
+}
+
+function showOrder(o, fresh) {
+  if (!o) return;
+  const credText = formatOrderCredentials(o);
+  modal(`${fresh ? `<div class="okic">${ICON.check}</div><h3>${o.status === 'completed' ? 'Purchase Completed' : 'Order Submitted'}</h3>` : `<h3>${esc(o.productName || o.n)}</h3>`}
+    <p>${esc(o.productName || o.n)} · Qty ${o.quantity || 1} · <b>${fmt(o.totalMmk || o.p)} Ks</b></p>
+    <div class="oid">Order Code: ${esc(o.orderCode || o.id)} · Status: ${esc((o.status || 'completed').toUpperCase())}</div>
+    <div class="cred" id="cred">${esc(credText)}</div>
+    ${o.categoryId === 'outline-vpn' ? '<p style="font-size:12px;color:var(--t2)">Install Outline Client → tap "+" → paste your ss:// access key above.</p>' : ''}
+    <div class="macts"><button class="btn lg" data-copy="${esc(credText)}">Copy Details</button><a class="btn pri lg" href="#/orders?t=buy" data-x>View in History</a></div>`, 'c');
+}
+
+/* ---------------- Top Up View ---------------- */
+function vTopup(params) {
+  const need = +params.get('need') || 0, pre = need ? Math.max(1000, Math.ceil(need / 500) * 500) : '';
+  return `<div class="ph"><div class="crumb"><a href="#/">Home</a> / Top Up</div><h1>Top Up Wallet</h1><p>Transfer the exact MMK amount, upload your payment screenshot, and get credited.</p></div>
+  <div class="pp" style="grid-template-columns:minmax(0,1fr)">
+  <div class="steps" style="max-width:860px;width:100%;margin:0 auto">
+    <section class="scard"><div class="shd"><span class="num">1</span><h2>Enter Amount</h2><small>Min 1,000 Ks</small></div>
+      <label class="fld big"><span>Amount (Ks)</span><input id="amt" type="number" inputmode="numeric" min="1000" step="500" placeholder="0" value="${pre}"></label>
+      <div class="amts">${[5000, 10000, 20000, 50000].map(v => `<button data-amt="${v}">${fmt(v)} Ks</button>`).join('')}</div></section>
+    <section class="scard"><div class="shd"><span class="num">2</span><h2>Payment Method</h2></div>
+      <div class="methods">${METHODS.map(([n, c, a], i) => `<button class="mth ${i ? '' : 'on'}" data-m="${i}"><span class="mi" style="background:${c};${c === '#ffcc00' ? 'color:#111' : ''}">${a}</span>${n}</button>`).join('')}</div></section>
+    <section class="scard"><div class="shd"><span class="num">3</span><h2>Transfer To</h2></div>
+      <div class="acct" id="acct"></div></section>
+    <section class="scard"><div class="shd"><span class="num">4</span><h2>Upload Payment Screenshot</h2><small>Required</small></div>
+      <label class="drop" id="drop"><input type="file" id="file" accept="image/png,image/jpeg,image/webp"><span><span class="ui">${ICON.up}</span><b>Tap to upload or drag &amp; drop</b><small>PNG, JPG or WEBP · max 5 MB</small></span></label>
+      <ul class="rules"><li>Transaction ID, amount and date must be clearly visible.</li><li>Amount must match your transfer. Edited screenshots are rejected.</li></ul></section>
+    <section class="paybar stick"><div><h3>Top Up Summary</h3><div class="sel" id="tsum">Enter amount<small>Screenshot required</small></div></div>
+      <div class="tot"><span>Amount</span><b id="tamt">0 Ks</b></div><button class="btn pri lg block" id="send" disabled>SUBMIT TOP UP</button></section>
+  </div></div>`;
+}
+function initTopup() {
+  let img = '', mi = 0;
+  const acct = () => { const [n, , , no] = METHODS[mi]; $('#acct').innerHTML = `<div><small>${n}</small><b>${no}</b><span>Exabyte Digital Store</span></div><button class="cpy" data-copy="${no.replace(/\s/g, '')}">Copy</button>`; };
+  const chk = () => {
+    const a = +$('#amt').value || 0; $('#tamt').textContent = fmt(a) + ' Ks';
+    $$('[data-amt]').forEach(b => b.classList.toggle('on', +b.dataset.amt === a));
+    $('#tsum').innerHTML = `${a >= 1000 ? fmt(a) + ' Ks via ' + METHODS[mi][0] : 'Enter amount (min 1,000)'}<small>${img ? '<span style="color:#4ade80">Screenshot attached</span>' : '<span class="warn">Screenshot required</span>'}</small>`;
+    $('#send').disabled = !(a >= 1000 && img);
+  };
+  const load = f => {
+    if (!f || !f.type.startsWith('image/')) return toast('Please choose an image');
+    if (f.size > 5e6) return toast('File too large (max 5 MB)');
+    const r = new FileReader();
+    r.onload = () => {
+      const im = new Image(); im.onload = () => {
+        const sc = Math.min(1, 900 / Math.max(im.width, im.height)), cv = document.createElement('canvas');
+        cv.width = im.width * sc; cv.height = im.height * sc; cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+        img = cv.toDataURL('image/jpeg', .75);
+        const d = $('#drop'); d.classList.add('has');
+        d.innerHTML = `<input type="file" id="file" accept="image/png,image/jpeg,image/webp"><img src="${img}" alt="Payment screenshot preview"><span class="chg">Change</span>`;
+        $('#file').onchange = e => load(e.target.files[0]); chk();
+      }; im.src = r.result;
+    }; r.readAsDataURL(f);
+  };
+  $('#amt').oninput = chk;
+  $$('[data-amt]').forEach(b => b.onclick = () => { $('#amt').value = b.dataset.amt; chk(); });
+  $$('[data-m]').forEach(b => b.onclick = () => { mi = +b.dataset.m; $$('[data-m]').forEach(x => x.classList.toggle('on', x === b)); acct(); chk(); });
+  $('#file').onchange = e => load(e.target.files[0]);
+  const d = $('#drop');
+  ['dragenter', 'dragover'].forEach(ev => d.addEventListener(ev, e => { e.preventDefault(); d.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach(ev => d.addEventListener(ev, e => { e.preventDefault(); d.classList.remove('drag'); }));
+  d.addEventListener('drop', e => load(e.dataTransfer.files[0]));
+  $('#send').onclick = async () => {
+    $('#send').disabled = true;
+    try {
+      const res = await fetch('/api/topup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amountMmk: +$('#amt').value, method: METHODS[mi][0], screenshot: img })
+      }).then(r => r.json());
+      if (!res.success) { $('#send').disabled = false; return toast(res.message || 'Failed'); }
+      STATE.tops.unshift(res.topup);
+      modal(`<div class="okic">${ICON.check}</div><h3>Top Up Submitted</h3><p>Your payment screenshot has been uploaded. You can approve it from the History tab or wait for auto-verification.</p><div class="oid">Request ID: ${res.topup.id}</div>
+        <div class="macts"><a class="btn lg" href="#/orders?t=top" data-x>View Requests</a><a class="btn pri lg" href="#/products" data-x>Browse Store</a></div>`, 'c');
+      location.hash = '#/orders?t=top';
+      // Auto-approve after 4 seconds for instant live store testing
+      setTimeout(async () => {
+        const ap = await fetch('/api/topup/approve', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: res.topup.id })
+        }).then(r => r.json());
+        if (ap.success) {
+          setWalletUI(ap.balanceMmk);
+          const found = STATE.tops.find(x => x.id === res.topup.id);
+          if (found) found.status = 'approved';
+          toast(`Top up approved: +${fmt(res.topup.amountMmk)} Ks`);
+          if (location.hash.startsWith('#/orders')) render();
+        }
+      }, 4000);
+    } catch {
+      $('#send').disabled = false;
+      toast('Network error submitting top up');
+    }
+  };
+  acct(); chk();
+}
+
+/* ---------------- History View ---------------- */
+function vOrders(params) {
+  const t = params.get('t') || 'buy';
+  const buys = STATE.buys.length ? STATE.buys.map(o => {
+    const c = STATE.categories.find(x => x.id === o.categoryId) || STATE.categories[0] || { color: '#2f6bff', name: 'E' };
+    const code = o.orderCode || o.id;
+    return `<div class="hr">${logo(c)}<div class="ht"><b>${esc(o.productName || o.n)} (×${o.quantity || 1})</b><small>${esc(code)} · ${esc(new Date(o.createdAt || o.d).toLocaleString())} · ${esc((o.status || 'completed').toUpperCase())}</small></div><div class="ha"><b>-${fmt(o.totalMmk || o.p)} Ks</b><button class="lk" data-order="${esc(code)}">View details</button></div></div>`;
+  }).join('') : `<p class="empty">No purchases yet. <a class="lk" href="#/products">Browse products</a></p>`;
+
+  const tops = STATE.tops.length ? STATE.tops.map(x => {
+    const ok = x.status === 'approved' || x.ok;
+    return `<div class="hr"><img class="thumb" src="${x.screenshot || x.img}" alt="Screenshot"><div class="ht"><b>${esc(x.method || x.m)} Top Up</b><small>${esc(x.id)} · ${esc(new Date(x.createdAt || x.d).toLocaleString())}</small></div><div class="ha"><b>+${fmt(x.amountMmk || x.amt)} Ks</b><span class="stt ${ok ? 'ok' : ''}">${ok ? 'APPROVED' : 'PENDING'}</span>${!ok ? ` <button class="lk" data-approve="${esc(x.id)}" style="margin-left:6px">Approve Now</button>` : ''}</div></div>`;
+  }).join('') : `<p class="empty">No top up requests yet. <a class="lk" href="#/topup">Top up now</a></p>`;
+
+  return `<div class="ph"><div class="crumb"><a href="#/">Home</a> / History</div><h1>Order &amp; Top Up History</h1><p>View your delivered account credentials, slot invitations, and top up requests.</p></div>
+  <section class="sec" style="margin-top:12px"><div class="fbar"><div class="tabs"><button data-ot="buy" class="${t === 'buy' ? 'on' : ''}">Product Purchases (${STATE.buys.length})</button><button data-ot="top" class="${t === 'top' ? 'on' : ''}">Top Up Requests (${STATE.tops.length})</button></div></div>
+  <div class="hl">${t === 'buy' ? buys : tops}</div></section>`;
+}
+
+/* ---------------- API Status & Documentation View ---------------- */
+function vApi() {
+  return `<div class="ph"><div class="crumb"><a href="#/">Home</a> / API</div><h1>Live API Integration &amp; Reseller Docs</h1><p>Connected to Canboso Buyer API v2 with automatic 1 USD = ${fmt(STATE.rateMmk)} Ks pricing &amp; fulfillment routing.</p></div>
+  <div class="pp" style="grid-template-columns:minmax(0,1fr)"><div class="steps" style="max-width:860px;width:100%;margin:0 auto">
+  <section class="scard"><div class="shd"><span class="num">1</span><h2>Live Catalog Status</h2><button class="btn" id="refreshCat" style="margin-left:auto;height:34px;padding:0 12px;font-size:12px">Sync Now</button></div>
+    <div class="msum" style="margin:0">
+      <div class="mrow"><span>Catalog Source</span><b>${esc(STATE.source.toUpperCase())} (${STATE.totalProducts} packages across ${STATE.categories.length} categories)</b></div>
+      <div class="mrow"><span>Exchange &amp; Profit Rate</span><b>$1.00 USD = ${fmt(STATE.rateMmk)} MMK (Ks)</b></div>
+      <div class="mrow"><span>Fulfillment Types</span><b>account (Instant) · slot (Email Invite) · upgrade_account (Manual Upgrade)</b></div>
+      <div class="mrow"><span>Last Synced</span><b>${esc(STATE.fetchedAt ? new Date(STATE.fetchedAt).toLocaleString() : 'Just now')}</b></div>
+    </div></section>
+  <section class="scard"><div class="ep"><span class="mt">GET</span><b>/api/catalog</b></div><p class="help" style="margin:0 0 10px">Fetches live Canboso /api/v2/telegram-buyer/products + Outline VPN packages, converts USD to MMK (1$ = 5,500 Ks), and classifies instant vs manual slot/upgrade requirements.</p><div class="code">GET http://localhost:60010/api/catalog</div></section>
+  <section class="scard"><div class="ep"><span class="mt post">POST</span><b>/api/purchase</b></div><p class="help" style="margin:0 0 10px">Purchases a package using wallet balance and forwards to POST https://canboso.com/api/v2/telegram-buyer/purchase with Idempotency-Key.</p><div class="code">POST http://localhost:60010/api/purchase\nContent-Type: application/json\n\n{\n  "productId": "6a57762993139fafaedf1672",\n  "quantity": 1,\n  "customerEmail": "buyer@example.com"\n}</div></section>
+  </div></div>`;
+}
+const vNotFound = () => `<div class="ph"><h1>Page not found</h1><p><a class="lk" href="#/">Back to home</a></p></div>`;
+
+/* ---------------- Router ---------------- */
+async function render() {
+  const v = $('#view');
+  if (!STATE.loaded) {
+    v.innerHTML = `<div class="ph"><h1>Loading store catalog...</h1><p>Fetching live products and packages...</p></div>`;
+    try { await loadBackendData(false); } catch (e) { v.innerHTML = `<div class="ph"><h1>Error loading catalog</h1><p>${esc(e.message)}</p></div>`; return; }
+  }
+  const [path, qs = ''] = location.hash.slice(1).split('?'), params = new URLSearchParams(qs), seg = (path || '/').split('/').filter(Boolean);
+  const r = seg[0] || 'home';
+  clearInterval(bTimer); closeMenu();
+  const navKey = r === 'products' && params.get('g') === 'vpn' ? 'vpn' : r === 'p' ? 'products' : r;
+  $$('[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === navKey));
+
+  if (r === 'home') { v.innerHTML = vHome(); initBanner(); }
+  else if (r === 'products') { v.innerHTML = vProducts(params); drawCards(); $('#q').oninput = e => { q = e.target.value; drawCards(); }; }
+  else if (r === 'p') { v.innerHTML = vProduct(seg[1], params); if (curCat && curCat.id === seg[1]) updateSelectedPackageDetails(); }
+  else if (r === 'topup') { v.innerHTML = vTopup(params); initTopup(); }
+  else if (r === 'orders') v.innerHTML = vOrders(params);
+  else if (r === 'api') {
+    v.innerHTML = vApi();
+    const btn = $('#refreshCat');
+    if (btn) btn.onclick = async () => { btn.textContent = 'Syncing...'; await loadBackendData(true); toast('Catalog synced from Canboso API'); render(); };
+  }
+  else v.innerHTML = vNotFound();
+  scrollTo(0, 0);
+}
+
+/* ---------------- Global Events ---------------- */
+const menu = $('#mmenu'), burger = $('#burger');
+function closeMenu() { menu.hidden = true; burger.setAttribute('aria-expanded', 'false'); }
+burger.onclick = () => { menu.hidden = false; burger.setAttribute('aria-expanded', 'true'); };
+menu.addEventListener('click', e => { if (e.target.closest('[data-close]') || e.target.closest('a')) closeMenu(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMenu(); $$('.modal').forEach(m => m.remove()); } });
+
+document.addEventListener('click', async e => {
+  const tab = e.target.closest('[data-tab]');
+  if (tab) { catFilter = tab.dataset.tab; $$('[data-tab]').forEach(b => b.classList.toggle('on', b === tab)); drawCards(); return; }
+
+  const ot = e.target.closest('[data-ot]');
+  if (ot) { location.hash = '#/orders?t=' + ot.dataset.ot; return; }
+
+  const pk = e.target.closest('[data-pk]');
+  if (pk) {
+    selIdx = +pk.dataset.pk;
+    $$('[data-pk]').forEach(b => b.classList.toggle('on', b === pk));
+    updateSelectedPackageDetails();
+    return;
+  }
+
+  const qb = e.target.closest('[data-q]');
+  if (qb && curCat) {
+    const k = curCat.packages[selIdx];
+    const maxQ = typeof k.available === 'number' && k.available > 0 ? k.available : 50;
+    curQty = Math.max(1, Math.min(maxQ, curQty + (+qb.dataset.q)));
+    const qin = $('#f_qty'); if (qin) qin.value = curQty;
+    drawPay();
+    return;
+  }
+
+  if (e.target.closest('[data-act="confirm"]')) return confirmBuy();
+
+  const od = e.target.closest('[data-order]');
+  if (od) {
+    const code = od.dataset.order;
+    return showOrder(STATE.buys.find(o => (o.orderCode || o.id) === code));
+  }
+
+  const ap = e.target.closest('[data-approve]');
+  if (ap) {
+    const id = ap.dataset.approve;
+    const res = await fetch('/api/topup/approve', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    }).then(r => r.json());
+    if (res.success) {
+      setWalletUI(res.balanceMmk);
+      const found = STATE.tops.find(x => x.id === id);
+      if (found) found.status = 'approved';
+      toast('Top up approved!');
+      render();
+    }
+    return;
+  }
+
+  const cp = e.target.closest('[data-copy]');
+  if (cp) { navigator.clipboard?.writeText(cp.dataset.copy).then(() => toast('Copied to clipboard'), () => toast('Copy failed')); }
+});
+
+addEventListener('hashchange', render);
+render();

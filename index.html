@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0f1e">
+<meta name="description" content="Exabyte Digital Store — premium apps, AI tools, VPN access and digital subscriptions with local MMK payments.">
+<title>Exabyte Digital Store</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a href="#view" class="skip">Skip to content</a>
+
+<!-- HEADER (Banana placement: logo left, nav, actions right, hamburger on mobile) -->
+<header class="top">
+  <a class="brand" href="#/" aria-label="Exabyte Digital Store home">
+    <svg class="mark" viewBox="0 0 36 36" aria-hidden="true"><g fill="currentColor"><rect x="2" y="3" width="7" height="30"/><rect x="12" y="3" width="22" height="7"/><rect x="12" y="14.5" width="17" height="7"/><rect x="12" y="26" width="22" height="7"/></g></svg>
+    <span class="wordmark"><b>EXABYTE</b><small>DIGITAL STORE</small></span>
+  </a>
+  <nav class="nav" aria-label="Primary">
+    <a href="#/" data-r="home">Home</a>
+    <a href="#/products" data-r="products">Products</a>
+    <a href="#/products?g=vpn" data-r="vpn">VPN</a>
+    <a href="#/topup" data-r="topup">Top Up</a>
+    <div class="dd">
+      <button class="ddb" data-r="orders">History <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="ddm"><a href="#/orders?t=buy">Product Purchase</a><a href="#/orders?t=top">Top Up Requests</a></div>
+    </div>
+    <a href="#/api" data-r="api">API</a>
+  </nav>
+  <div class="acts">
+    <a class="wallet" href="#/topup" aria-label="Wallet balance. Top up">
+      <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/></svg>
+      <b id="bal">0</b><span>MMK</span>
+    </a>
+    <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+  </div>
+</header>
+
+<!-- MOBILE SLIDE-IN MENU -->
+<div class="mmenu" id="mmenu" hidden>
+  <div class="mback" data-close></div>
+  <nav class="mpanel" aria-label="Mobile">
+    <div class="mhead"><b>Menu</b><button data-close aria-label="Close menu">&times;</button></div>
+    <a href="#/">Home</a><a href="#/products">All Products</a><a href="#/products?g=vpn">VPN</a><a href="#/products?g=ai">AI Tools</a>
+    <a href="#/topup">Top Up Wallet</a><a href="#/orders?t=buy">Purchase History</a><a href="#/orders?t=top">Top Up History</a><a href="#/api">Reseller API</a>
+  </nav>
+</div>
+
+<main id="view" class="page"></main>
+
+<footer class="foot">
+  <div class="fin">
+    <div class="fbrand">
+      <a class="brand" href="#/"><svg class="mark" viewBox="0 0 36 36" aria-hidden="true"><g fill="currentColor"><rect x="2" y="3" width="7" height="30"/><rect x="12" y="3" width="22" height="7"/><rect x="12" y="14.5" width="17" height="7"/><rect x="12" y="26" width="22" height="7"/></g></svg><span class="wordmark"><b>EXABYTE</b><small>DIGITAL STORE</small></span></a>
+      <p>Premium apps, AI tools and VPN access. Top up once, buy anytime. Delivered in minutes.</p>
+    </div>
+    <div><h5>Store</h5><a href="#/products">All products</a><a href="#/p/outline-vpn">Outline VPN</a><a href="#/products?g=ai">AI tools</a><a href="#/products?g=stream">Streaming</a></div>
+    <div><h5>Account</h5><a href="#/topup">Top up</a><a href="#/orders">History</a><a href="#/api">Reseller API</a><a href="#/">Telegram support</a></div>
+    <div><h5>We accept</h5><div class="pays"><span>KBZPay</span><span>WavePay</span><span>AYA Pay</span><span>CB Pay</span><span>Bank</span></div></div>
+  </div>
+  <div class="copyr">© 2026 Exabyte Digital Store</div>
+</footer>
+
+<!-- MOBILE BOTTOM NAV (Banana placement) -->
+<nav class="bnav" aria-label="Bottom">
+  <a href="#/" data-r="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+  <a href="#/products" data-r="products"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>Shop</a>
+  <a href="#/topup" data-r="topup" class="bmid"><span><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Top Up</a>
+  <a href="#/orders" data-r="orders"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>History</a>
+  <a href="#/api" data-r="api"><svg viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg>API</a>
+</nav>
+<script src="app.js"></script>
+</body>
+</html>
