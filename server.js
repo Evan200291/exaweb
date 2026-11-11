@@ -663,6 +663,20 @@ function splitTranslationChunks(text, limit = 1500) {
   return chunks;
 }
 
+function myanmarCharacterCount(text) {
+  return (String(text || '').match(/[\u1000-\u109F\uAA60-\uAA7F]/g) || []).length;
+}
+
+function isUsefulMyanmarTranslation(source, translated) {
+  const sourceText = String(source || '');
+  const translatedText = String(translated || '');
+  if (!translatedText.trim()) return false;
+  // A successful HTTP response can still be the original English text. Reject it
+  // before it reaches the cache or the UI.
+  if (myanmarCharacterCount(sourceText) < 4 && myanmarCharacterCount(translatedText) < 4) return false;
+  return myanmarCharacterCount(translatedText) >= Math.max(4, Math.min(12, Math.floor(sourceText.length * 0.025)));
+}
+
 async function getFullMyanmarTranslation(productId) {
   const rawProduct = [...OUTLINE_PACKAGES, ...((memoryCatalog && memoryCatalog.products) || [])]
     .find(product => String(product.productId) === String(productId));
@@ -671,8 +685,11 @@ async function getFullMyanmarTranslation(productId) {
   if (!source) return { productId, descriptionMm: '', cached: true };
   const sourceHash = crypto.createHash('sha256').update(`v2\0${source}`).digest('hex');
   const cached = mmTranslationCache[productId];
-  if (cached && cached.sourceHash === sourceHash && cached.descriptionMm) {
+  if (cached && cached.sourceHash === sourceHash && cached.descriptionMm && isUsefulMyanmarTranslation(source, cached.descriptionMm)) {
     return { productId, descriptionMm: cached.descriptionMm, cached: true };
+  }
+  if (cached && cached.sourceHash === sourceHash && cached.descriptionMm && !isUsefulMyanmarTranslation(source, cached.descriptionMm)) {
+    delete mmTranslationCache[productId];
   }
   if (activeTranslations.has(productId)) return activeTranslations.get(productId);
 
@@ -689,6 +706,7 @@ async function getFullMyanmarTranslation(productId) {
     protectedValues.forEach((value, index) => {
       descriptionMm = descriptionMm.replace(new RegExp(`ZXQURL${index}ZXQ`, 'gi'), value);
     });
+    if (!isUsefulMyanmarTranslation(source, descriptionMm)) throw new Error('Translation service returned non-Myanmar text');
     mmTranslationCache[productId] = { sourceHash, descriptionMm, translatedAt: new Date().toISOString() };
     fs.writeFileSync(TRANSLATION_CACHE_FILE, JSON.stringify(mmTranslationCache, null, 2), 'utf8');
     return { productId, descriptionMm, cached: false };
@@ -793,7 +811,7 @@ function compactStructuredCatalog(data) {
       ...category,
       packages: category.packages.map(packageItem => {
         const {
-          description, descriptionMm, promotions,
+          description, descriptionMm, nameMm, promotions,
           deliveryLabel, deliveryLabelMm, deliveryHint, deliveryHintMm,
           ...compact
         } = packageItem;
@@ -1182,6 +1200,10 @@ const server = http.createServer(async (req, res) => {
         if (product) break;
       }
       if (!product) return sendJson(res, 404, { success: false, message: 'Product was not found' });
+      delete product.descriptionMm;
+      delete product.nameMm;
+      delete product.deliveryLabelMm;
+      delete product.deliveryHintMm;
       return sendCompressedJson(req, res, 200, { success: true, product }, 'private, max-age=30, stale-while-revalidate=60');
     } catch (error) {
       return sendJson(res, 503, { success: false, message: error.message });
@@ -1201,9 +1223,8 @@ const server = http.createServer(async (req, res) => {
       const rawProduct = [...OUTLINE_PACKAGES, ...((memoryCatalog && memoryCatalog.products) || [])]
         .find(product => String(product.productId) === productId);
       if (!rawProduct) return sendJson(res, 404, { success: false, message: 'Product was not found in the seller catalog' });
-      const fallback = translatePackageMm(rawProduct, classifyDelivery(rawProduct));
-      console.warn(`Myanmar translation fallback for ${productId}: ${error.message}`);
-      return sendJson(res, 200, { success: true, productId, descriptionMm: fallback.descriptionMm || rawProduct.description || '', cached: false, fallback: true });
+      console.warn(`Myanmar translation unavailable for ${productId}: ${error.message}`);
+      return sendJson(res, 200, { success: true, productId, descriptionMm: rawProduct.description || '', cached: false, translationFailed: true });
     }
   }
 

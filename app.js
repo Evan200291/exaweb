@@ -223,6 +223,7 @@ async function loadFullPackageTranslation(pkg) {
       currentDesc.classList.remove('translation-loading');
       currentDesc.textContent = 'မြန်မာဘာသာပြန်ဆိုမှုကို ယခုမရရှိနိုင်သေးပါ။ ခဏအကြာ ပြန်လည်ကြိုးစားပါ။';
     }
+    if (currentDesc) currentDesc.innerHTML = linkify(pkg.description || '');
     console.warn('Full package translation failed:', error);
   }
 }
