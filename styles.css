@@ -566,3 +566,5 @@ html[lang="my"] .lang-switch .switch-knob{transform:translateX(36px)}
 .dots button.on{width:24px;border-radius:8px;background:#fff}
 @media(max-width:767px){.banner{border-radius:0;border-left:0;border-right:0}.dots{right:12px;bottom:12px}}
 .invoice-mode .foot,.invoice-mode .bnav{display:none}.orders-mode .page{min-height:auto}.orders-mode .foot{margin-top:28px}
+.hero-row + .sec{margin-top:24px}
+@media(max-width:767px){.hero-row + .sec{margin-top:20px}}
