@@ -626,27 +626,51 @@ try {
 
 const activeTranslations = new Map();
 
-function translateChunkToMyanmar(chunk) {
+const MYANMAR_TRANSLATION_HOSTS = [
+  'translate.googleapis.com',
+  'translate.google.com',
+  'translate.google.co.th'
+];
+
+function requestMyanmarTranslation(host, chunk) {
   return new Promise((resolve, reject) => {
-    const url = new URL('https://translate.googleapis.com/translate_a/single');
-    url.search = new URLSearchParams({ client: 'gtx', sl: 'en', tl: 'my', dt: 't', q: chunk }).toString();
+    const url = new URL(`https://${host}/translate_a/single`);
+    // `auto` is more tolerant of package descriptions that contain Burmese labels,
+    // URLs and product names mixed into the English source.
+    url.search = new URLSearchParams({ client: 'gtx', sl: 'auto', tl: 'my', dt: 't', q: chunk }).toString();
     const request = https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 ExabyteStore/1.0' }, timeout: 12000 }, response => {
       let body = '';
       response.setEncoding('utf8');
       response.on('data', part => body += part);
       response.on('end', () => {
-        if (response.statusCode !== 200) return reject(new Error(`Translation service returned ${response.statusCode}`));
+        if (response.statusCode !== 200) return reject(new Error(`${host} returned ${response.statusCode}`));
         try {
           const parsed = JSON.parse(body);
           const translated = Array.isArray(parsed[0]) ? parsed[0].map(part => part && part[0] ? part[0] : '').join('') : '';
-          if (!translated) throw new Error('Translation service returned an empty result');
+          if (!translated.trim()) throw new Error(`${host} returned an empty result`);
           resolve(translated);
         } catch (error) { reject(error); }
       });
     });
-    request.on('timeout', () => request.destroy(new Error('Translation service timed out')));
+    request.on('timeout', () => request.destroy(new Error(`${host} timed out`)));
     request.on('error', reject);
   });
+}
+
+async function translateChunkToMyanmar(chunk) {
+  let lastError;
+  for (const host of MYANMAR_TRANSLATION_HOSTS) {
+    try {
+      const translated = await requestMyanmarTranslation(host, chunk);
+      // If a provider echoes the English source, try the next provider instead of
+      // caching a successful HTTP response that is not actually Burmese.
+      if (myanmarCharacterCount(translated) > 0 || myanmarCharacterCount(chunk) > 0) return translated;
+      lastError = new Error(`${host} returned non-Myanmar text`);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error('Translation service unavailable');
 }
 
 function splitTranslationChunks(text, limit = 1500) {
