@@ -7,6 +7,7 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const zlib = require('zlib');
 
 const PORT = process.env.PORT || 60010;
 const API_BASE = 'https://canboso.com';
@@ -785,12 +786,52 @@ function buildStructuredCatalog(rawProducts, metaInfo) {
   };
 }
 
+function compactStructuredCatalog(data) {
+  return {
+    ...data,
+    categories: data.categories.map(category => ({
+      ...category,
+      packages: category.packages.map(packageItem => {
+        const {
+          description, descriptionMm, promotions,
+          deliveryLabel, deliveryLabelMm, deliveryHint, deliveryHintMm,
+          ...compact
+        } = packageItem;
+        return compact;
+      })
+    }))
+  };
+}
+
 function sendJson(res, status, obj) {
   const body = JSON.stringify(obj);
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store'
   });
+  res.end(body);
+}
+
+function sendCompressedJson(req, res, status, obj, cacheControl = 'no-store') {
+  const source = Buffer.from(JSON.stringify(obj));
+  const accepted = String(req.headers['accept-encoding'] || '');
+  let body = source;
+  let encoding = '';
+  if (source.length > 1024 && /\bbr\b/.test(accepted)) {
+    body = zlib.brotliCompressSync(source, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 4 } });
+    encoding = 'br';
+  } else if (source.length > 1024 && /\bgzip\b/.test(accepted)) {
+    body = zlib.gzipSync(source, { level: 6 });
+    encoding = 'gzip';
+  }
+  const headers = {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': cacheControl,
+    'Content-Length': body.length,
+    'Vary': 'Accept-Encoding'
+  };
+  if (encoding) headers['Content-Encoding'] = encoding;
+  res.writeHead(status, headers);
   res.end(body);
 }
 
@@ -1095,6 +1136,29 @@ const server = http.createServer(async (req, res) => {
     const orders = orderCode ? store.orders.filter(order => order.orderCode === orderCode) : store.orders.slice(0, 100);
     return sendJson(res, 200, { success: true, orders });
   }
+  if (pathname === '/api/bootstrap' && req.method === 'GET') {
+    try {
+      const force = u.searchParams.get('refresh') === '1';
+      const raw = await getRawCatalog(force);
+      const catalog = compactStructuredCatalog(buildStructuredCatalog(raw.catalog.products || [], raw));
+      const state = {
+        success: true,
+        rateMmk: RATE_MMK,
+        balanceMmk: store.balanceMmk,
+        orders: store.orders.map(({ accounts, customerAccounts, customerEmail, ...order }) => order),
+        topups: store.topups.map(({ screenshot, screenshotHash, ...topup }) => topup)
+      };
+      const auth = {
+        google: !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_REDIRECT_URI && SESSION_SECRET),
+        telegram: !!(TG_BOT_TOKEN && TG_BOT_USERNAME && APP_BASE_URL && SESSION_SECRET),
+        telegramBot: TG_BOT_USERNAME,
+        user: currentUser(req)
+      };
+      return sendCompressedJson(req, res, 200, { success: true, catalog, state, auth }, 'private, max-age=5, stale-while-revalidate=15');
+    } catch (error) {
+      return sendCompressedJson(req, res, 503, { success: false, message: error.message });
+    }
+  }
   if (pathname === '/api/catalog' && req.method === 'GET') {
     try {
       const force = u.searchParams.get('refresh') === '1';
@@ -1103,6 +1167,24 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, data);
     } catch (e) {
       return sendJson(res, 503, { success: false, message: e.message });
+    }
+  }
+
+  if (pathname === '/api/product-detail' && req.method === 'GET') {
+    try {
+      const productId = String(u.searchParams.get('productId') || '').trim();
+      if (!productId) return sendJson(res, 400, { success: false, message: 'productId is required' });
+      const raw = await getRawCatalog(false);
+      const structured = buildStructuredCatalog(raw.catalog.products || [], raw);
+      let product = null;
+      for (const category of structured.categories) {
+        product = category.packages.find(item => String(item.productId) === productId);
+        if (product) break;
+      }
+      if (!product) return sendJson(res, 404, { success: false, message: 'Product was not found' });
+      return sendCompressedJson(req, res, 200, { success: true, product }, 'private, max-age=30, stale-while-revalidate=60');
+    } catch (error) {
+      return sendJson(res, 503, { success: false, message: error.message });
     }
   }
 
@@ -1416,12 +1498,24 @@ const server = http.createServer(async (req, res) => {
   const filePath = path.join(__dirname, relPath);
   if (filePath.startsWith(__dirname) && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath).toLowerCase();
-    const longLivedAsset = ['.svg', '.png', '.jpg', '.jpeg', '.webp', '.ico', '.ttf'].includes(ext);
-    res.writeHead(200, {
+    const longLivedAsset = ['.css', '.js', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.ico', '.ttf'].includes(ext);
+    const compressible = ['.html', '.css', '.js', '.json', '.svg'].includes(ext);
+    const accepted = String(req.headers['accept-encoding'] || '');
+    const headers = {
       'Content-Type': MIME[ext] || 'application/octet-stream',
-      'Cache-Control': longLivedAsset ? 'public, max-age=2592000, immutable' : 'no-cache'
-    });
-    fs.createReadStream(filePath).pipe(res);
+      'Cache-Control': longLivedAsset ? 'public, max-age=2592000, immutable' : 'no-cache',
+      'Vary': 'Accept-Encoding'
+    };
+    let stream = fs.createReadStream(filePath);
+    if (compressible && /\bbr\b/.test(accepted)) {
+      headers['Content-Encoding'] = 'br';
+      stream = stream.pipe(zlib.createBrotliCompress({ params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 4 } }));
+    } else if (compressible && /\bgzip\b/.test(accepted)) {
+      headers['Content-Encoding'] = 'gzip';
+      stream = stream.pipe(zlib.createGzip({ level: 6 }));
+    }
+    res.writeHead(200, headers);
+    stream.pipe(res);
   } else {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('Not found');

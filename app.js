@@ -54,9 +54,9 @@ const COPY = {
 const t = key => (COPY[LANG] && COPY[LANG][key]) || COPY.en[key] || key;
 const bi = (en, mm) => LANG === 'mm' ? mm : en;
 const pkgName = p => LANG === 'mm' && p.nameMm ? p.nameMm : p.name;
-const pkgDescription = p => LANG === 'mm' && p.descriptionMm ? p.descriptionMm : p.description;
-const pkgDeliveryLabel = p => LANG === 'mm' && p.deliveryLabelMm ? p.deliveryLabelMm : p.deliveryLabel;
-const pkgDeliveryHint = p => LANG === 'mm' && p.deliveryHintMm ? p.deliveryHintMm : p.deliveryHint;
+const pkgDescription = p => LANG === 'mm' && p.descriptionMm ? p.descriptionMm : (p.description || '');
+const pkgDeliveryLabel = p => LANG === 'mm' && p.deliveryLabelMm ? p.deliveryLabelMm : (p.deliveryLabel || (p.isInstant ? bi('Instant delivery','ချက်ချင်းပို့ဆောင်ခြင်း') : bi('Manual delivery','လူကိုယ်တိုင်ပို့ဆောင်ခြင်း')));
+const pkgDeliveryHint = p => LANG === 'mm' && p.deliveryHintMm ? p.deliveryHintMm : (p.deliveryHint || (p.isInstant ? bi('Delivered automatically after payment.','ငွေပေးချေပြီးနောက် အလိုအလျောက်ပို့ပေးပါမည်။') : bi('Handled by the seller after payment.','ငွေပေးချေပြီးနောက် ရောင်းချသူက ဆောင်ရွက်ပေးပါမည်။')));
 const groupLabel = key => LANG === 'mm' ? ({ all: 'အားလုံး', vpn: 'VPN နှင့်လုံခြုံရေး', ai: 'AI ကိရိယာများ', design: 'ဒီဇိုင်းနှင့်ဗီဒီယို', stream: 'ရုပ်သံနှင့်တေးဂီတ', work: 'လုပ်ငန်းသုံး', learn: 'လေ့လာရေး' }[key] || GROUPS[key]) : (key === 'all' ? 'All' : GROUPS[key]);
 const productTypeLabel = type => LANG === 'mm' ? ({ account: 'ချက်ချင်းရအကောင့်', slot: 'ဖိတ်ကြား Slot', upgrade_account: 'အကောင့်အဆင့်မြှင့်' }[type] || type) : type;
 
@@ -169,13 +169,14 @@ function beginSlowLoad() {
 
 async function loadBackendData(forceCatalog = false, showLoader = true) {
   const finishLoading = showLoader ? beginSlowLoad() : () => {};
-  let catRes, stRes;
+  let bootstrap;
   try {
-    [catRes, stRes] = await Promise.all([
-      fetch(`/api/catalog${forceCatalog ? '?refresh=1' : ''}`).then(r => r.json()),
-      fetch('/api/state').then(r => r.json())
-    ]);
+    const response = await fetch(`/api/bootstrap${forceCatalog ? '?refresh=1' : ''}`);
+    bootstrap = await response.json();
+    if (!response.ok || !bootstrap.success) throw new Error(bootstrap.message || 'Store bootstrap failed');
   } finally { finishLoading(); }
+  const catRes = bootstrap.catalog;
+  const stRes = bootstrap.state;
   if (catRes && catRes.success) {
     STATE.rateMmk = catRes.rateMmk || 5500;
     STATE.source = catRes.source;
@@ -187,6 +188,10 @@ async function loadBackendData(forceCatalog = false, showLoader = true) {
     setWalletUI(stRes.balanceMmk);
     STATE.buys = stRes.orders || [];
     STATE.tops = stRes.topups || [];
+  }
+  if (bootstrap.auth) {
+    AUTH = { ...bootstrap.auth, user: bootstrap.auth.user || null };
+    applyLanguageChrome();
   }
   STATE.loaded = true;
 }
@@ -224,8 +229,8 @@ async function loadFullPackageTranslation(pkg) {
 
 /* ---------------- Banner (2 slides + safe zones) ---------------- */
 const SLIDES = [
-  { href: '#/p/outline-vpn', alt: 'Outline VPN - private Bangkok access', d: 'assets/banners/outline-complete.png', m: 'assets/banners/outline-complete.png', kicker: 'OUTLINE VPN · BANGKOK', title: 'Private access.<br>Ready in seconds.', meta: 'Bangkok route · 100 GB from 5,000 Ks', action: 'VIEW DATA PLANS', mTitle: 'Private.<br>Ready.', mMeta: 'Bangkok VPN · Instant access', mAction: 'VIEW PLANS' },
-  { href: '#/products?g=ai', alt: 'Premium AI tools and productivity packages', d: 'assets/banners/apps-complete.png', m: 'assets/banners/apps-complete.png', kicker: 'EXABYTE DIGITAL STORE', title: 'The tools you use.<br>One local wallet.', meta: 'AI · Design · Streaming · Productivity', action: 'EXPLORE PACKAGES', mTitle: 'Premium<br>tools.', mMeta: 'AI · Design · Streaming', mAction: 'BROWSE' }
+  { href: '#/p/outline-vpn', alt: 'Outline VPN - private Bangkok access', d: 'assets/banners/outline-complete.png', m: 'assets/banners/outline-complete.png', kicker: 'OUTLINE VPN · BANGKOK', title: 'Private access.<br>Ready in seconds.', meta: 'Bangkok route · 100 GB from 5,000 Ks', action: 'VIEW DATA PLANS', mTitle: 'Private access.<br>Ready instantly.', mMeta: 'Bangkok · Fast · Secure', mAction: 'VIEW PLANS' },
+  { href: '#/products?g=ai', alt: 'Premium AI tools and productivity packages', d: 'assets/banners/apps-complete.png', m: 'assets/banners/apps-complete.png', kicker: 'EXABYTE DIGITAL STORE', title: 'The tools you use.<br>One local wallet.', meta: 'AI · Design · Streaming · Productivity', action: 'EXPLORE PACKAGES', mTitle: 'Premium tools.<br>One wallet.', mMeta: 'AI · Design · Streaming', mAction: 'BROWSE' }
 ];
 const T = (x, y, s, w, f, txt, extra = '') => `<text x="${x}" y="${y}" font-family="Inter,Segoe UI,sans-serif" font-size="${s}" font-weight="${w}" fill="${f}" ${extra}>${txt}</text>`;
 const bgDefs = (id, a, b, gx, gy, glow) => `<defs><linearGradient id="${id}b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient><radialGradient id="${id}g" cx="${gx}" cy="${gy}" r=".55"><stop offset="0" stop-color="${glow}" stop-opacity=".55"/><stop offset="1" stop-color="${glow}" stop-opacity="0"/></radialGradient><pattern id="${id}p" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60 0H0V60" fill="none" stroke="#fff" stroke-opacity=".045"/></pattern></defs>`;
@@ -336,7 +341,7 @@ function drawCards() {
   const list = STATE.categories.filter(c => {
     if (catFilter !== 'all' && c.group !== catFilter) return false;
     if (!term) return true;
-    return c.name.toLowerCase().includes(term) || c.packages.some(p => p.name.toLowerCase().includes(term) || p.description.toLowerCase().includes(term));
+    return c.name.toLowerCase().includes(term) || c.packages.some(p => p.name.toLowerCase().includes(term) || String(p.description || '').toLowerCase().includes(term));
   });
   const el = $('#cards');
   if (el) el.innerHTML = list.length ? list.map(cardHTML).join('') : '<p class="empty" style="grid-column:1/-1">No matching products found.</p>';
@@ -389,6 +394,25 @@ function getParsedLines(id) {
   const el = $(id);
   if (!el) return [];
   return el.value.split(/[\r\n,]+/).map(s => s.trim()).filter(Boolean);
+}
+
+let packageDetailRequestId = 0;
+async function loadSelectedPackageDetails() {
+  if (!curCat) return;
+  const selected = curCat.packages[selIdx];
+  if (!selected || selected.detailsLoaded || selected.description !== undefined) return;
+  const requestId = ++packageDetailRequestId;
+  const productId = selected.productId;
+  try {
+    const response = await fetch(`/api/product-detail?productId=${encodeURIComponent(productId)}`);
+    const data = await response.json();
+    if (!response.ok || !data.success) throw new Error(data.message || 'Package details failed');
+    if (requestId !== packageDetailRequestId || !curCat || curCat.packages[selIdx]?.productId !== productId) return;
+    Object.assign(curCat.packages[selIdx], data.product, { detailsLoaded: true });
+    updateSelectedPackageDetails();
+  } catch (error) {
+    console.warn('Package detail load failed:', error);
+  }
 }
 
 function updateSelectedPackageDetails() {
@@ -866,7 +890,7 @@ async function render(resetScroll = true) {
 
   if (r === 'home') { v.innerHTML = vHome(); applyHomeHeroCopy(); initBanner(); }
   else if (r === 'products') { v.innerHTML = vProducts(params); drawCards(); $('#q').oninput = e => { q = e.target.value; drawCards(); }; }
-  else if (r === 'p') { v.innerHTML = vProduct(seg[1], params); if (curCat && curCat.id === seg[1]) updateSelectedPackageDetails(); }
+  else if (r === 'p') { v.innerHTML = vProduct(seg[1], params); if (curCat && curCat.id === seg[1]) { updateSelectedPackageDetails(); loadSelectedPackageDetails(); } }
   else if (r === 'topup') { v.innerHTML = vTopup(params); initTopup(); }
   else if (r === 'orders') v.innerHTML = vOrders(params);
   else if (r === 'api') {
@@ -895,6 +919,7 @@ async function syncLiveSellerData() {
         const freshIndex = freshCategory.packages.findIndex(p => p.productId === selectedProductId);
         if (freshIndex >= 0) selIdx = freshIndex;
         updateSelectedPackageDetails();
+        loadSelectedPackageDetails();
       }
     } else if (!document.querySelector('input:focus,textarea:focus,select:focus')) {
       await render(false);
@@ -935,6 +960,7 @@ document.addEventListener('click', async e => {
     selIdx = +pk.dataset.pk;
     $$('[data-pk]').forEach(b => b.classList.toggle('on', b === pk));
     updateSelectedPackageDetails();
+    loadSelectedPackageDetails();
     return;
   }
 
@@ -962,6 +988,5 @@ document.addEventListener('click', async e => {
 
 addEventListener('hashchange', render);
 applyLanguageChrome();
-loadIdentity();
 render();
 setInterval(syncLiveSellerData, 10_000);
